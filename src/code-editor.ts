@@ -1,6 +1,8 @@
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
+import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
+import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
 import { EditorSettings } from "./settings";
 
 // Monaco Editor Worker の設定
@@ -8,6 +10,12 @@ self.MonacoEnvironment = {
   getWorker(_: unknown, label: string) {
     if (label === "typescript" || label === "javascript") {
       return new tsWorker();
+    }
+    if (label === "css" || label === "scss" || label === "less") {
+      return new cssWorker();
+    }
+    if (label === "html" || label === "handlebars" || label === "razor") {
+      return new htmlWorker();
     }
     return new editorWorker();
   },

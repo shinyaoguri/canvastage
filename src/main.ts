@@ -2,6 +2,7 @@ import "./style.css";
 import { createEditor } from "./code-editor";
 import { Preview, Files } from "./preview";
 import { SettingsPanel } from "./settings-panel";
+import { SamplesPanel } from "./samples-panel";
 import { loadSettings, applySettings } from "./settings";
 
 type FileType = "html" | "css" | "js";
@@ -97,6 +98,22 @@ function init() {
   const settingsPanel = new SettingsPanel(app);
   const initialSettings = settingsPanel.getSettings();
 
+  // サンプルパネル
+  const samplesPanel = new SamplesPanel(app);
+
+  // サンプルボタン
+  const samplesBtn = document.createElement("button");
+  samplesBtn.id = "samples-btn";
+  samplesBtn.className = "toolbar-btn";
+  samplesBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    <line x1="8" y1="7" x2="16" y2="7"/>
+    <line x1="8" y1="11" x2="14" y2="11"/>
+  </svg>`;
+  samplesBtn.onclick = () => samplesPanel.toggle();
+  app.appendChild(samplesBtn);
+
   // 設定ボタン
   const settingsBtn = document.createElement("button");
   settingsBtn.id = "settings-btn";
@@ -139,6 +156,15 @@ function init() {
   // 設定変更時にエディタへ反映
   settingsPanel.setOnChange((settings) => {
     editor.applySettings(settings);
+  });
+
+  // サンプル選択時にファイルを読み込み
+  samplesPanel.setOnSelect((sampleFiles) => {
+    files.html = sampleFiles.html;
+    files.css = sampleFiles.css;
+    files.js = sampleFiles.js;
+    editor.setValue(files[currentFile]);
+    runCode();
   });
 
   // タブ切り替え

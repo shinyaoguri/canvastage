@@ -58,11 +58,34 @@ const INPUT_BRIDGE_SCRIPT = `
         // 現在位置を更新
         window._parentInput.mouse.x = data.x;
         window._parentInput.mouse.y = data.y;
+        // p5.js のグローバル変数を即座に更新
+        if (typeof window.mouseX !== 'undefined') {
+          window.mouseX = data.x;
+          window.mouseY = data.y;
+        }
         if (data.eventType === 'mousedown') {
           window._parentInput.mouse.pressed = true;
           window._parentInput.mouse.button = data.button;
+          if (typeof window.mouseIsPressed !== 'undefined') {
+            window.mouseIsPressed = true;
+            window.mouseButton = data.button === 0 ? window.LEFT :
+                                 data.button === 2 ? window.RIGHT : window.CENTER;
+          }
+          // p5.js のコールバックを呼び出し
+          if (typeof window.mousePressed === 'function') window.mousePressed();
         } else if (data.eventType === 'mouseup') {
           window._parentInput.mouse.pressed = false;
+          if (typeof window.mouseIsPressed !== 'undefined') {
+            window.mouseIsPressed = false;
+          }
+          if (typeof window.mouseReleased === 'function') window.mouseReleased();
+          if (typeof window.mouseClicked === 'function') window.mouseClicked();
+        } else if (data.eventType === 'mousemove') {
+          if (window._parentInput.mouse.pressed && typeof window.mouseDragged === 'function') {
+            window.mouseDragged();
+          } else if (typeof window.mouseMoved === 'function') {
+            window.mouseMoved();
+          }
         }
         break;
 
@@ -209,7 +232,7 @@ export class Preview {
       post({ type: "wheel", deltaY: e.deltaY });
     });
 
-    // キーボードイベント
+    // キーボードイベント（captureフェーズでMonaco Editorより先にキャプチャ）
     const sendKeyEvent = (e: KeyboardEvent, eventType: string) => {
       post({
         type: "keyboard",
@@ -218,8 +241,8 @@ export class Preview {
         keyCode: e.keyCode,
       });
     };
-    document.addEventListener("keydown", (e) => sendKeyEvent(e, "keydown"));
-    document.addEventListener("keyup", (e) => sendKeyEvent(e, "keyup"));
+    window.addEventListener("keydown", (e) => sendKeyEvent(e, "keydown"), true);
+    window.addEventListener("keyup", (e) => sendKeyEvent(e, "keyup"), true);
 
     // ウィンドウリサイズ
     const sendResize = () => {
