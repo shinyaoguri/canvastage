@@ -1,0 +1,523 @@
+:root {
+  --editor-font-size: 14px;
+  --editor-font-family: 'JetBrains Mono', monospace;
+  --editor-font-weight: 400;
+  --editor-line-height: 1.5;
+
+  --editor-text-opacity: 0.9;
+  --editor-text-shadow-blur: 3px;
+  --editor-text-shadow-color: #000000;
+
+  --editor-line-number-opacity: 0.3;
+
+  --editor-cursor-opacity: 0.8;
+  --editor-cursor-width: 2px;
+  --editor-cursor-color: #ffffff;
+  --editor-cursor-bg: rgba(255, 255, 255, 0.8);
+
+  --editor-selection-opacity: 0.15;
+
+  --editor-current-line-opacity: 0.05;
+  --editor-current-line-color: #ffffff;
+  --editor-current-line-bg: rgba(255, 255, 255, 0.05);
+
+  --editor-suggest-bg-opacity: 0.4;
+  --editor-suggest-blur: 8px;
+  --editor-suggest-text-opacity: 0.5;
+
+  --editor-padding: 32px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+/* プレビュー iframe */
+#preview-frame {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  z-index: 0;
+}
+
+/* Monaco Editor コンテナ */
+body > .monaco-editor {
+  position: absolute !important;
+  top: max(2rem, var(--editor-padding)) !important;
+  left: max(0.5rem, var(--editor-padding)) !important;
+  right: max(0.5rem, var(--editor-padding)) !important;
+  bottom: max(0.5rem, var(--editor-padding)) !important;
+  width: auto !important;
+  height: auto !important;
+  z-index: 10;
+}
+
+/* Monaco Editor 背景透過 */
+.monaco-editor,
+.monaco-editor .overflow-guard,
+.monaco-editor .monaco-scrollable-element,
+.monaco-editor .inputarea.ime-input,
+.monaco-editor .margin,
+.monaco-editor .monaco-editor-background {
+  background: transparent !important;
+}
+
+/* エディタのフォーカス枠線を無効化 */
+.monaco-editor,
+.monaco-editor *:focus,
+.monaco-editor *:focus-visible {
+  outline: none !important;
+}
+
+.monaco-editor .lines-content,
+.monaco-editor .view-lines,
+.monaco-editor .view-line {
+  background: transparent !important;
+}
+
+/* 行番号 */
+.monaco-editor .line-numbers {
+  color: rgba(255, 255, 255, var(--editor-line-number-opacity)) !important;
+}
+
+/* カーソル */
+.monaco-editor .cursor {
+  background: var(--editor-cursor-bg) !important;
+  width: var(--editor-cursor-width) !important;
+}
+
+/* Monaco の隠し入力エリアのネイティブキャレットを非表示 */
+.monaco-editor .inputarea,
+.monaco-editor textarea,
+.monaco-editor input,
+.monaco-editor .native-edit-context {
+  caret-color: transparent !important;
+}
+
+/* テキストスタイル */
+.monaco-editor .view-line span {
+  opacity: var(--editor-text-opacity) !important;
+  font-weight: var(--editor-font-weight) !important;
+  text-shadow: 0 0 var(--editor-text-shadow-blur) var(--editor-text-shadow-color);
+}
+
+/* 選択範囲 */
+.monaco-editor .selected-text {
+  background: rgba(255, 255, 255, var(--editor-selection-opacity)) !important;
+}
+
+/* カーソル行ハイライト */
+.monaco-editor .current-line,
+.monaco-editor .view-overlays .current-line {
+  background: var(--editor-current-line-bg) !important;
+  border: none !important;
+}
+
+/* ブラケットペアガイド・インデントガイドを非表示 */
+.monaco-editor .bracket-pair-guide,
+.monaco-editor .vertical-guide,
+.monaco-editor .bracket-indent-guide,
+.monaco-editor .lines-content .cigr,
+.monaco-editor .lines-content .cigra {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+/* アクティブブラケットハイライトを非表示 */
+.monaco-editor .bracket-match {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 青いラインの可能性がある要素を無効化 */
+.monaco-editor .focused .selected-text,
+.monaco-editor .view-overlays .focused-line,
+.monaco-editor .view-overlays .line-insert,
+.monaco-editor .view-overlays .line-delete {
+  border: none !important;
+}
+
+/* 単語ハイライト（同じ単語をクリックしたときの背景）*/
+.monaco-editor .wordHighlight,
+.monaco-editor .wordHighlightStrong,
+.monaco-editor .wordHighlightText {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 検索マッチハイライト */
+.monaco-editor .findMatch,
+.monaco-editor .findMatchHighlight {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: none !important;
+}
+
+/* セレクションハイライトボーダー */
+.monaco-editor .selectionHighlight {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 装飾ライン（差分表示など） */
+.monaco-editor .line-decoration {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* フォーカス時の枠線 */
+.monaco-editor .view-overlays > div > div {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* 行範囲ハイライト */
+.monaco-editor .rangeHighlight,
+.monaco-editor .lineHighlight {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* インラインヒント・装飾 */
+.monaco-editor .monaco-highlighted-label,
+.monaco-editor .detected-link {
+  border: none !important;
+}
+
+/* サジェストウィジェット */
+.monaco-editor .suggest-widget {
+  background: rgba(0, 0, 0, var(--editor-suggest-bg-opacity)) !important;
+  backdrop-filter: blur(var(--editor-suggest-blur)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: none !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list {
+  background: transparent !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list-row {
+  color: rgba(255, 255, 255, var(--editor-suggest-text-opacity)) !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list-row.focused {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list-row .highlight {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.monaco-editor .suggest-widget .details {
+  background: rgba(0, 0, 0, var(--editor-suggest-bg-opacity)) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.monaco-editor .suggest-widget .details .body {
+  color: rgba(255, 255, 255, var(--editor-suggest-text-opacity)) !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list-row .icon {
+  opacity: 0.4 !important;
+}
+
+/* ファイルタブ */
+#file-tabs {
+  position: absolute;
+  top: 0.5rem;
+  left: max(0.5rem, var(--editor-padding));
+  display: flex;
+  gap: 2px;
+  z-index: 100;
+  font-family: var(--editor-font-family);
+  font-size: 11px;
+}
+
+#file-tabs button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+#file-tabs button:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+#file-tabs button.active {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ツールバーボタン共通 */
+.toolbar-btn {
+  position: absolute;
+  top: 0.5rem;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  z-index: 100;
+}
+
+.toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.toolbar-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+#settings-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 36px);
+}
+
+#fullscreen-btn {
+  right: max(0.5rem, var(--editor-padding));
+}
+
+/* 設定パネル */
+#settings-panel {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 320px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 200;
+  transition: right 0.25s ease;
+  overflow-y: auto;
+  font-family: var(--editor-font-family);
+}
+
+#settings-panel.open {
+  right: 0;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.settings-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.settings-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.settings-content {
+  padding: 12px 0;
+}
+
+.settings-footer {
+  padding: 16px 20px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-footer .settings-reset {
+  width: 100%;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.settings-footer .settings-reset:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.settings-group {
+  padding: 8px 20px 16px;
+}
+
+.settings-group-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 10px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.settings-row label {
+  flex: 0 0 80px;
+}
+
+.settings-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  outline: none;
+}
+
+.settings-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.settings-row input[type="text"] {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+}
+
+.settings-row input[type="text"]:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* カスタムドロップダウン（フォント選択用） */
+.custom-select {
+  flex: 1;
+  position: relative;
+}
+
+.custom-select-trigger {
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.custom-select-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.custom-select.open .custom-select-trigger {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.custom-select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  z-index: 1000;
+  display: none;
+}
+
+.custom-select.open .custom-select-options {
+  display: block;
+}
+
+.custom-select-option {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.custom-select-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-select-option.selected {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.settings-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  accent-color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.settings-row input[type="color"] {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.settings-value {
+  width: 36px;
+  text-align: right;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
