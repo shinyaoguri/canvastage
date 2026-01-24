@@ -4,18 +4,15 @@ import { Files } from "./preview";
 export type SampleSelectCallback = (files: Files) => void;
 
 export class SamplesPanel {
-  private container: HTMLElement;
   private panel: HTMLElement;
   private isOpen: boolean = false;
   private onSelect?: SampleSelectCallback;
 
   constructor(container: HTMLElement) {
-    this.container = container;
-
     this.panel = document.createElement("div");
     this.panel.id = "samples-panel";
     this.panel.innerHTML = this.buildHTML();
-    this.container.appendChild(this.panel);
+    container.appendChild(this.panel);
 
     this.bindEvents();
   }

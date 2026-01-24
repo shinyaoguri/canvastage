@@ -211,20 +211,18 @@ const SETTING_GROUPS: { title: string; settings: SettingDef[] }[] = [
 export type SettingsChangeCallback = (settings: EditorSettings) => void;
 
 export class SettingsPanel {
-  private container: HTMLElement;
   private panel: HTMLElement;
   private settings: EditorSettings;
   private isOpen = false;
   private onChange: SettingsChangeCallback | null = null;
 
   constructor(container: HTMLElement) {
-    this.container = container;
     this.settings = loadSettings();
 
     this.panel = document.createElement("div");
     this.panel.id = "settings-panel";
     this.panel.innerHTML = this.buildHTML();
-    this.container.appendChild(this.panel);
+    container.appendChild(this.panel);
 
     // すべてのフォントを事前に読み込む
     preloadAllFonts();
