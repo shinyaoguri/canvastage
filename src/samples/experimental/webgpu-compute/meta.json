@@ -1,0 +1,4 @@
+{
+  "name": "WebGPU Compute",
+  "description": "GPUコンピュートシェーダーでパーティクル計算"
+}
