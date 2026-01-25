@@ -216,8 +216,8 @@ export class SettingsPanel {
   private isOpen = false;
   private onChange: SettingsChangeCallback | null = null;
 
-  constructor(container: HTMLElement) {
-    this.settings = loadSettings();
+  private constructor(container: HTMLElement, settings: EditorSettings) {
+    this.settings = settings;
 
     this.panel = document.createElement("div");
     this.panel.id = "settings-panel";
@@ -230,6 +230,11 @@ export class SettingsPanel {
     this.bindEvents();
   }
 
+  static async create(container: HTMLElement): Promise<SettingsPanel> {
+    const settings = await loadSettings();
+    return new SettingsPanel(container, settings);
+  }
+
   setOnChange(callback: SettingsChangeCallback): void {
     this.onChange = callback;
   }
@@ -240,7 +245,7 @@ export class SettingsPanel {
 
   private notifyChange(): void {
     applySettings(this.settings);
-    saveSettings(this.settings);
+    saveSettings(this.settings).catch(() => {});
     this.onChange?.(this.settings);
   }
 

@@ -3,7 +3,7 @@ import { createEditor } from "./code-editor";
 import { Preview, Files } from "./preview";
 import { SettingsPanel } from "./settings-panel";
 import { SamplesPanel } from "./samples-panel";
-import { loadSettings, applySettings } from "./settings";
+import { loadSettings, applySettings, EditorSettings } from "./settings";
 import { DEFAULT_FILES } from "./defaults";
 
 type FileType = "html" | "css" | "js";
@@ -14,11 +14,11 @@ const LANGUAGES: Record<FileType, string> = {
   js: "javascript",
 };
 
-function init() {
+async function init() {
   const app = document.getElementById("app")!;
 
   // 設定を読み込んで適用
-  applySettings(loadSettings());
+  applySettings(await loadSettings());
 
   // ファイル内容を管理
   const files: Files = { ...DEFAULT_FILES };
@@ -40,7 +40,7 @@ function init() {
   app.appendChild(tabs);
 
   // 設定パネル
-  const settingsPanel = new SettingsPanel(app);
+  const settingsPanel = await SettingsPanel.create(app);
   const initialSettings = settingsPanel.getSettings();
 
   // サンプルパネル
@@ -99,7 +99,7 @@ function init() {
   const editor = createEditor(document.body, files[currentFile], LANGUAGES[currentFile], runCode, initialSettings);
 
   // 設定変更時にエディタへ反映
-  settingsPanel.setOnChange((settings) => {
+  settingsPanel.setOnChange((settings: EditorSettings) => {
     editor.applySettings(settings);
   });
 
