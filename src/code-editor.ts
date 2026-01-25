@@ -21,164 +21,100 @@ self.MonacoEnvironment = {
   },
 };
 
-// カスタムテーマ定義
-const THEMES: Record<string, monaco.editor.IStandaloneThemeData> = {
-  "transparent-dark": {
-    base: "vs-dark",
-    inherit: true,
-    rules: [],
-    colors: {
-      "editor.background": "#00000000",
-      "editor.lineHighlightBackground": "#ffffff08",
-      "editor.lineHighlightBorder": "#00000000",
-    },
-  },
-  "monokai": {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "comment", foreground: "75715E", fontStyle: "italic" },
-      { token: "keyword", foreground: "F92672" },
-      { token: "string", foreground: "E6DB74" },
-      { token: "number", foreground: "AE81FF" },
-      { token: "type", foreground: "66D9EF", fontStyle: "italic" },
-      { token: "function", foreground: "A6E22E" },
-      { token: "variable", foreground: "F8F8F2" },
-      { token: "constant", foreground: "AE81FF" },
-    ],
-    colors: {
-      "editor.background": "#00000000",
-      "editor.foreground": "#F8F8F2",
-      "editor.lineHighlightBackground": "#ffffff08",
-      "editor.lineHighlightBorder": "#00000000",
-    },
-  },
-  "dracula": {
+// カラーパレット型
+interface ThemePalette {
+  comment: string;
+  keyword: string;
+  string: string;
+  number: string;
+  type: string;
+  function: string;
+  variable: string;
+  constant: string;
+  foreground?: string;
+  lineHighlight?: string;
+}
+
+// パレットからテーマデータを生成
+function createTheme(palette: ThemePalette): monaco.editor.IStandaloneThemeData {
+  return {
     base: "vs-dark",
     inherit: true,
     rules: [
-      { token: "comment", foreground: "6272A4", fontStyle: "italic" },
-      { token: "keyword", foreground: "FF79C6" },
-      { token: "string", foreground: "F1FA8C" },
-      { token: "number", foreground: "BD93F9" },
-      { token: "type", foreground: "8BE9FD", fontStyle: "italic" },
-      { token: "function", foreground: "50FA7B" },
-      { token: "variable", foreground: "F8F8F2" },
-      { token: "constant", foreground: "BD93F9" },
+      { token: "comment", foreground: palette.comment, fontStyle: "italic" },
+      { token: "keyword", foreground: palette.keyword },
+      { token: "string", foreground: palette.string },
+      { token: "number", foreground: palette.number },
+      { token: "type", foreground: palette.type, fontStyle: "italic" },
+      { token: "function", foreground: palette.function },
+      { token: "variable", foreground: palette.variable },
+      { token: "constant", foreground: palette.constant },
     ],
     colors: {
       "editor.background": "#00000000",
-      "editor.foreground": "#F8F8F2",
-      "editor.lineHighlightBackground": "#ffffff08",
+      "editor.foreground": `#${palette.foreground ?? "F8F8F2"}`,
+      "editor.lineHighlightBackground": palette.lineHighlight ?? "#ffffff08",
       "editor.lineHighlightBorder": "#00000000",
     },
+  };
+}
+
+// カラーパレット定義
+const PALETTES: Record<string, ThemePalette> = {
+  monokai: {
+    comment: "75715E", keyword: "F92672", string: "E6DB74", number: "AE81FF",
+    type: "66D9EF", function: "A6E22E", variable: "F8F8F2", constant: "AE81FF",
+  },
+  dracula: {
+    comment: "6272A4", keyword: "FF79C6", string: "F1FA8C", number: "BD93F9",
+    type: "8BE9FD", function: "50FA7B", variable: "F8F8F2", constant: "BD93F9",
   },
   "github-dark": {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "comment", foreground: "8B949E", fontStyle: "italic" },
-      { token: "keyword", foreground: "FF7B72" },
-      { token: "string", foreground: "A5D6FF" },
-      { token: "number", foreground: "79C0FF" },
-      { token: "type", foreground: "FFA657" },
-      { token: "function", foreground: "D2A8FF" },
-      { token: "variable", foreground: "C9D1D9" },
-      { token: "constant", foreground: "79C0FF" },
-    ],
-    colors: {
-      "editor.background": "#00000000",
-      "editor.foreground": "#C9D1D9",
-      "editor.lineHighlightBackground": "#ffffff08",
-      "editor.lineHighlightBorder": "#00000000",
-    },
+    comment: "8B949E", keyword: "FF7B72", string: "A5D6FF", number: "79C0FF",
+    type: "FFA657", function: "D2A8FF", variable: "C9D1D9", constant: "79C0FF",
+    foreground: "C9D1D9",
   },
-  "nord": {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "comment", foreground: "616E88", fontStyle: "italic" },
-      { token: "keyword", foreground: "81A1C1" },
-      { token: "string", foreground: "A3BE8C" },
-      { token: "number", foreground: "B48EAD" },
-      { token: "type", foreground: "8FBCBB" },
-      { token: "function", foreground: "88C0D0" },
-      { token: "variable", foreground: "D8DEE9" },
-      { token: "constant", foreground: "B48EAD" },
-    ],
-    colors: {
-      "editor.background": "#00000000",
-      "editor.foreground": "#D8DEE9",
-      "editor.lineHighlightBackground": "#ffffff08",
-      "editor.lineHighlightBorder": "#00000000",
-    },
+  nord: {
+    comment: "616E88", keyword: "81A1C1", string: "A3BE8C", number: "B48EAD",
+    type: "8FBCBB", function: "88C0D0", variable: "D8DEE9", constant: "B48EAD",
+    foreground: "D8DEE9",
   },
-  "solarized": {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "comment", foreground: "586E75", fontStyle: "italic" },
-      { token: "keyword", foreground: "859900" },
-      { token: "string", foreground: "2AA198" },
-      { token: "number", foreground: "D33682" },
-      { token: "type", foreground: "B58900" },
-      { token: "function", foreground: "268BD2" },
-      { token: "variable", foreground: "839496" },
-      { token: "constant", foreground: "CB4B16" },
-    ],
-    colors: {
-      "editor.background": "#00000000",
-      "editor.foreground": "#839496",
-      "editor.lineHighlightBackground": "#ffffff08",
-      "editor.lineHighlightBorder": "#00000000",
-    },
+  solarized: {
+    comment: "586E75", keyword: "859900", string: "2AA198", number: "D33682",
+    type: "B58900", function: "268BD2", variable: "839496", constant: "CB4B16",
+    foreground: "839496",
   },
   "one-dark": {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "comment", foreground: "5C6370", fontStyle: "italic" },
-      { token: "keyword", foreground: "C678DD" },
-      { token: "string", foreground: "98C379" },
-      { token: "number", foreground: "D19A66" },
-      { token: "type", foreground: "E5C07B" },
-      { token: "function", foreground: "61AFEF" },
-      { token: "variable", foreground: "E06C75" },
-      { token: "constant", foreground: "D19A66" },
-    ],
-    colors: {
-      "editor.background": "#00000000",
-      "editor.foreground": "#ABB2BF",
-      "editor.lineHighlightBackground": "#ffffff08",
-      "editor.lineHighlightBorder": "#00000000",
-    },
+    comment: "5C6370", keyword: "C678DD", string: "98C379", number: "D19A66",
+    type: "E5C07B", function: "61AFEF", variable: "E06C75", constant: "D19A66",
+    foreground: "ABB2BF",
   },
-  "cyberpunk": {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "comment", foreground: "6A6A8E", fontStyle: "italic" },
-      { token: "keyword", foreground: "FF2A6D" },
-      { token: "string", foreground: "05D9E8" },
-      { token: "number", foreground: "D1F7FF" },
-      { token: "type", foreground: "FF6AC1" },
-      { token: "function", foreground: "01FFC3" },
-      { token: "variable", foreground: "FCEE0A" },
-      { token: "constant", foreground: "FF9F1C" },
-    ],
-    colors: {
-      "editor.background": "#00000000",
-      "editor.foreground": "#D1F7FF",
-      "editor.lineHighlightBackground": "#ff2a6d10",
-      "editor.lineHighlightBorder": "#00000000",
-    },
+  cyberpunk: {
+    comment: "6A6A8E", keyword: "FF2A6D", string: "05D9E8", number: "D1F7FF",
+    type: "FF6AC1", function: "01FFC3", variable: "FCEE0A", constant: "FF9F1C",
+    foreground: "D1F7FF", lineHighlight: "#ff2a6d10",
+  },
+};
+
+// デフォルトテーマ（ルールなし、継承のみ）
+const DEFAULT_THEME: monaco.editor.IStandaloneThemeData = {
+  base: "vs-dark",
+  inherit: true,
+  rules: [],
+  colors: {
+    "editor.background": "#00000000",
+    "editor.lineHighlightBackground": "#ffffff08",
+    "editor.lineHighlightBorder": "#00000000",
   },
 };
 
 // テーマを登録
 function registerThemes(): void {
-  for (const [name, theme] of Object.entries(THEMES)) {
-    monaco.editor.defineTheme(name, theme);
+  // デフォルトテーマ
+  monaco.editor.defineTheme("transparent-dark", DEFAULT_THEME);
+  // パレットベースのテーマ
+  for (const [name, palette] of Object.entries(PALETTES)) {
+    monaco.editor.defineTheme(name, createTheme(palette));
   }
 }
 
