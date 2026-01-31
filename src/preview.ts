@@ -33,6 +33,78 @@ function buildLibraryScripts(directives: LibraryDirective[]): string {
   return scripts.join("\n");
 }
 
+// コンソール出力を親ウィンドウに転送するスクリプト
+const CONSOLE_BRIDGE_SCRIPT = `
+<script>
+(function() {
+  const originalConsole = {
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+    info: console.info.bind(console),
+    debug: console.debug.bind(console)
+  };
+
+  function sendToParent(level, args) {
+    const message = args.map(arg => {
+      if (arg === null) return 'null';
+      if (arg === undefined) return 'undefined';
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch (e) {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    window.parent.postMessage({
+      type: 'console',
+      level: level,
+      message: message,
+      timestamp: Date.now()
+    }, '*');
+  }
+
+  console.log = function(...args) {
+    originalConsole.log(...args);
+    sendToParent('log', args);
+  };
+
+  console.warn = function(...args) {
+    originalConsole.warn(...args);
+    sendToParent('warn', args);
+  };
+
+  console.error = function(...args) {
+    originalConsole.error(...args);
+    sendToParent('error', args);
+  };
+
+  console.info = function(...args) {
+    originalConsole.info(...args);
+    sendToParent('info', args);
+  };
+
+  console.debug = function(...args) {
+    originalConsole.debug(...args);
+    sendToParent('debug', args);
+  };
+
+  // エラーハンドリング
+  window.onerror = function(message, source, lineno, colno, error) {
+    sendToParent('error', [message + (lineno ? ' (line ' + lineno + ')' : '')]);
+    return false;
+  };
+
+  window.onunhandledrejection = function(event) {
+    sendToParent('error', ['Unhandled Promise rejection: ' + event.reason]);
+  };
+})();
+</script>
+`;
+
 // 親ウィンドウからの入力イベントをp5.jsに反映するブリッジスクリプト
 const INPUT_BRIDGE_SCRIPT = `
 <script>
@@ -183,8 +255,8 @@ function buildHtml(files: Files): string {
   const directives = parseDirectives(files.js);
   const libraryScripts = buildLibraryScripts(directives);
 
-  // 入力ブリッジスクリプトを<head>の直後に挿入（p5.jsより前に読み込む）
-  html = html.replace(/<head>/i, `<head>${INPUT_BRIDGE_SCRIPT}`);
+  // コンソールブリッジと入力ブリッジスクリプトを<head>の直後に挿入（p5.jsより前に読み込む）
+  html = html.replace(/<head>/i, `<head>${CONSOLE_BRIDGE_SCRIPT}${INPUT_BRIDGE_SCRIPT}`);
 
   // sketch.js を inline script に置換（ライブラリスクリプトを先に挿入）
   html = html.replace(

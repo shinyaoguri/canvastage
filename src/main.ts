@@ -3,6 +3,7 @@ import { createEditor } from "./code-editor";
 import { Preview, Files } from "./preview";
 import { SettingsPanel } from "./settings-panel";
 import { SamplesPanel } from "./samples-panel";
+import { ConsolePanel } from "./console-panel";
 import { loadSettings, applySettings, EditorSettings } from "./settings";
 import { DEFAULT_FILES } from "./defaults";
 
@@ -89,9 +90,13 @@ async function init() {
   // プレビュー
   const preview = new Preview(app);
 
+  // コンソールパネル
+  const consolePanel = new ConsolePanel(app);
+
   // 実行関数
   const runCode = () => {
     files[currentFile] = editor.getValue();
+    consolePanel.clear();
     preview.run(files);
   };
 
