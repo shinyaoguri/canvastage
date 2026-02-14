@@ -596,7 +596,7 @@ body > .monaco-editor {
   padding: 4px 8px;
   outline: none;
   transition: color 0.15s, border-color 0.15s;
-  width: 200px;
+  width: 120px;
 }
 
 #project-name:hover {
