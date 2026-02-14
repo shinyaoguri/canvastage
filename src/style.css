@@ -527,6 +527,124 @@ body > .monaco-editor {
   right: calc(max(0.5rem, var(--editor-padding)) + 72px);
 }
 
+/* シェアボタン */
+#share-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 108px);
+}
+
+#share-btn.loading svg {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Toast 通知 */
+#toast-container {
+  position: fixed;
+  top: 48px;
+  right: max(0.5rem, var(--editor-padding));
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-family: var(--editor-font-family);
+  font-size: 12px;
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  animation: toast-enter 0.25s ease-out;
+}
+
+.toast-info {
+  background: rgba(107, 179, 255, 0.15);
+  border: 1px solid rgba(107, 179, 255, 0.2);
+  color: rgba(107, 179, 255, 0.9);
+}
+
+.toast-success {
+  background: rgba(80, 250, 123, 0.15);
+  border: 1px solid rgba(80, 250, 123, 0.2);
+  color: rgba(80, 250, 123, 0.9);
+}
+
+.toast-error {
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  color: rgba(255, 107, 107, 0.9);
+}
+
+.toast-link {
+  color: inherit;
+  opacity: 0.8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.toast-link:hover {
+  opacity: 1;
+}
+
+.toast-copy {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.toast-copy:hover {
+  opacity: 1;
+}
+
+.toast-message {
+  white-space: nowrap;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-exit {
+  animation: toast-exit 0.3s ease-in forwards;
+}
+
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
 /* サンプルパネル */
 #samples-panel {
   position: fixed;
