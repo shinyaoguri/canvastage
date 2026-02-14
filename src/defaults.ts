@@ -27,6 +27,12 @@ html, body {
   background: #000;
 }
 
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 canvas {
   display: block;
 }`;

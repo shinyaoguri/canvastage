@@ -109,6 +109,16 @@ const CONSOLE_BRIDGE_SCRIPT = `
 const INPUT_BRIDGE_SCRIPT = `
 <script>
 (function() {
+  // canvasのローカル座標に変換するヘルパー
+  function toCanvasCoords(clientX, clientY) {
+    var canvas = document.querySelector('canvas');
+    if (canvas) {
+      var rect = canvas.getBoundingClientRect();
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+    return { x: clientX, y: clientY };
+  }
+
   // 親から受け取った入力状態を保持
   window._parentInput = {
     mouse: { x: 0, y: 0, pressed: false, button: 0 },
@@ -124,16 +134,17 @@ const INPUT_BRIDGE_SCRIPT = `
 
     switch (data.type) {
       case 'mouse':
+        var pos = toCanvasCoords(data.x, data.y);
         // 前回のマウス位置を保存
         window._parentInput.pmouse.x = window._parentInput.mouse.x;
         window._parentInput.pmouse.y = window._parentInput.mouse.y;
         // 現在位置を更新
-        window._parentInput.mouse.x = data.x;
-        window._parentInput.mouse.y = data.y;
+        window._parentInput.mouse.x = pos.x;
+        window._parentInput.mouse.y = pos.y;
         // p5.js のグローバル変数を即座に更新
         if (typeof window.mouseX !== 'undefined') {
-          window.mouseX = data.x;
-          window.mouseY = data.y;
+          window.mouseX = pos.x;
+          window.mouseY = pos.y;
         }
         if (data.eventType === 'mousedown') {
           window._parentInput.mouse.pressed = true;
@@ -188,7 +199,10 @@ const INPUT_BRIDGE_SCRIPT = `
         break;
 
       case 'touch':
-        window._parentInput.touches = data.touches;
+        window._parentInput.touches = data.touches.map(function(t) {
+          var tp = toCanvasCoords(t.x, t.y);
+          return { x: tp.x, y: tp.y, id: t.id };
+        });
         if (data.eventType === 'touchstart' && typeof window.touchStarted === 'function') {
           window.touchStarted();
         } else if (data.eventType === 'touchmove' && typeof window.touchMoved === 'function') {
