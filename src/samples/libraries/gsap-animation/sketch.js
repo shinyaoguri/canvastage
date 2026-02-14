@@ -1,5 +1,3 @@
-// @use gsap
-
 let circles = [];
 
 function setup() {

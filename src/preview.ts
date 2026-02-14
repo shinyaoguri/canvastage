@@ -1,36 +1,7 @@
-import { parseDirectives, LibraryDirective } from "./directive-parser";
-import { resolveLibraryUrl } from "./library-registry";
-
 export interface Files {
   html: string;
   css: string;
   js: string;
-}
-
-function buildLibraryScripts(directives: LibraryDirective[]): string {
-  const scripts: string[] = [];
-
-  for (const directive of directives) {
-    let url: string | null = null;
-
-    if (directive.url) {
-      // 直接URL指定
-      url = directive.url;
-    } else {
-      // レジストリから解決
-      url = resolveLibraryUrl(directive.name, directive.version);
-    }
-
-    if (url) {
-      scripts.push(`<script src="${url}"></script>`);
-    } else {
-      // 未知のライブラリはjsdelivrから直接取得を試みる
-      const version = directive.version || "latest";
-      scripts.push(`<script src="https://cdn.jsdelivr.net/npm/${directive.name}@${version}"></script>`);
-    }
-  }
-
-  return scripts.join("\n");
 }
 
 // コンソール出力を親ウィンドウに転送するスクリプト
@@ -265,17 +236,13 @@ function buildHtml(files: Files): string {
     `<style>\n${files.css}\n</style>`
   );
 
-  // @use ディレクティブを解析してライブラリスクリプトを生成
-  const directives = parseDirectives(files.js);
-  const libraryScripts = buildLibraryScripts(directives);
-
   // コンソールブリッジと入力ブリッジスクリプトを<head>の直後に挿入（p5.jsより前に読み込む）
   html = html.replace(/<head>/i, `<head>${CONSOLE_BRIDGE_SCRIPT}${INPUT_BRIDGE_SCRIPT}`);
 
-  // sketch.js を inline script に置換（ライブラリスクリプトを先に挿入）
+  // sketch.js を inline script に置換
   html = html.replace(
     /<script\s+src="sketch\.js"\s*><\/script>/i,
-    `${libraryScripts}\n<script>\n${files.js}\n</script>`
+    `<script>\n${files.js}\n</script>`
   );
 
   return html;
