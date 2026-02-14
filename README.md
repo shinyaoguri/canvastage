@@ -40,23 +40,6 @@ Add `// @use` comments at the top of your JavaScript to load external libraries 
 // @use https://example.com/lib.js  — direct URL
 ```
 
-### Built-in Library Registry
-
-| Category | Libraries |
-|---|---|
-| 3D | three.js |
-| Animation | gsap, anime.js |
-| Audio | tone.js, howler.js |
-| Physics | matter.js |
-| Visualization | d3, chart.js |
-| ML | ml5, TensorFlow.js |
-| GUI | tweakpane, dat.gui |
-| Math | mathjs |
-| Color | chroma-js |
-| Noise | simplex-noise |
-| p5.js Addons | p5.sound |
-| Utility | lodash, dayjs |
-
 ## Tech Stack
 
 - **TypeScript** + **Vite** — Build toolchain
@@ -64,33 +47,6 @@ Add `// @use` comments at the top of your JavaScript to load external libraries 
 - **p5.js** — Default creative coding library
 - **Zod** — Settings validation
 - **idb** — IndexedDB wrapper for persistence
-
-## Project Structure
-
-```
-src/
-├── main.ts              # App entry point, tab/toolbar setup
-├── code-editor.ts       # Monaco Editor wrapper and themes
-├── preview.ts           # Sandboxed iframe execution
-├── console-panel.ts     # Console output display
-├── settings.ts          # Settings schema and IndexedDB persistence
-├── settings-panel.ts    # Settings UI
-├── samples.ts           # Sample loader
-├── samples-panel.ts     # Sample browser UI
-├── directive-parser.ts  # @use directive parser
-├── library-registry.ts  # CDN library registry
-├── defaults.ts          # Default HTML/CSS/JS templates
-├── style.css            # Application styles
-└── samples/             # Categorized example sketches
-    ├── basics/
-    ├── animation/
-    ├── generative/
-    ├── interaction/
-    ├── 3d/
-    ├── libraries/
-    ├── ml/
-    └── experimental/
-```
 
 ## Deployment
 

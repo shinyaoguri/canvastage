@@ -427,6 +427,7 @@ body > .monaco-editor {
   flex: 1;
   height: 4px;
   -webkit-appearance: none;
+  appearance: none;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
   outline: none;
@@ -434,6 +435,7 @@ body > .monaco-editor {
 
 .settings-row input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 12px;
   height: 12px;
   background: rgba(255, 255, 255, 0.8);
