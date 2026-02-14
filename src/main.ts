@@ -6,6 +6,7 @@ import { SamplesPanel } from "./samples-panel";
 import { ConsolePanel } from "./console-panel";
 import { loadSettings, applySettings, EditorSettings } from "./settings";
 import { DEFAULT_FILES } from "./defaults";
+import { getRandomBasicsSample } from "./samples";
 import { ShareButton } from "./share";
 
 type FileType = "html" | "css" | "js";
@@ -22,8 +23,9 @@ async function init() {
   // 設定を読み込んで適用
   applySettings(await loadSettings());
 
-  // ファイル内容を管理
-  const files: Files = { ...DEFAULT_FILES };
+  // ファイル内容を管理（basicsからランダムに初期サンプルを選択）
+  const initialFiles = getRandomBasicsSample() ?? { ...DEFAULT_FILES };
+  const files: Files = initialFiles;
   let currentFile: FileType = "js";
 
   // タブ
