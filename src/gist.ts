@@ -60,3 +60,49 @@ export async function createGist(
   const data = (await response.json()) as { id: string; html_url: string };
   return { id: data.id, url: data.html_url };
 }
+
+export async function updateGist(
+  token: string,
+  gistId: string,
+  files: Files,
+  description?: string
+): Promise<GistResult> {
+  let response: Response;
+  try {
+    response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      body: JSON.stringify({
+        description: description || "canvastage sketch",
+        files: {
+          "index.html": { content: files.html },
+          "style.css": { content: files.css },
+          "sketch.js": { content: files.js },
+        },
+      }),
+    });
+  } catch {
+    throw new GistError("ネットワークエラーが発生しました。", "network");
+  }
+
+  if (response.status === 401) {
+    throw new GistError("トークンが無効です。再認証してください。", "auth");
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new GistError(
+      (data as { message?: string }).message ||
+        `GitHub API error (${response.status})`,
+      "api"
+    );
+  }
+
+  const data = (await response.json()) as { id: string; html_url: string };
+  return { id: data.id, url: data.html_url };
+}

@@ -532,8 +532,62 @@ body > .monaco-editor {
   right: calc(max(0.5rem, var(--editor-padding)) + 108px);
 }
 
+/* 新規プロジェクトボタン */
+#new-project-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 144px);
+}
+
 #share-btn.loading svg {
   animation: pulse 1s ease-in-out infinite;
+}
+
+#share-btn.saved {
+  color: rgba(80, 250, 123, 0.5);
+}
+
+#share-btn.saved:hover {
+  color: rgba(80, 250, 123, 0.8);
+}
+
+#share-btn.dirty::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 179, 71, 0.8);
+}
+
+/* プロジェクト名 */
+#project-name {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--editor-font-family);
+  font-size: 11px;
+  text-align: center;
+  padding: 4px 8px;
+  outline: none;
+  transition: color 0.15s, border-color 0.15s;
+  width: 200px;
+}
+
+#project-name:hover {
+  color: rgba(255, 255, 255, 0.6);
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+#project-name:focus {
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom-color: rgba(255, 255, 255, 0.3);
 }
 
 @keyframes pulse {
