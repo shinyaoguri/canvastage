@@ -377,6 +377,27 @@ body > .monaco-editor {
   color: rgba(255, 255, 255, 0.8);
 }
 
+.settings-github {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 6px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.settings-github:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.settings-github svg {
+  flex-shrink: 0;
+}
+
 .settings-group {
   padding: 8px 20px 16px;
 }
@@ -596,7 +617,7 @@ body > .monaco-editor {
   padding: 4px 8px;
   outline: none;
   transition: color 0.15s, border-color 0.15s;
-  width: 120px;
+  width: 100px;
 }
 
 #project-name:hover {
