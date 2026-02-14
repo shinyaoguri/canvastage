@@ -27,37 +27,28 @@ html, body {
   background: #000;
 }
 
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 canvas {
   display: block;
-}`;
-
-export const DEFAULT_JS = `function setup() {
-  createCanvas(windowWidth, windowHeight);
-  background(20);
-}
-
-function draw() {
-  background(20, 20, 30, 25);
-
-  fill(255, 100, 150);
-  noStroke();
-
-  let x = width / 2 + sin(frameCount * 0.02) * 200;
-  let y = height / 2 + cos(frameCount * 0.03) * 150;
-  let size = 50 + sin(frameCount * 0.05) * 30;
-
-  ellipse(x, y, size, size);
-
-  fill(100, 200, 255, 150);
-  ellipse(mouseX, mouseY, 30, 30);
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
 }`;
 
 export const DEFAULT_FILES: Files = {
   html: DEFAULT_HTML,
   css: DEFAULT_CSS,
-  js: DEFAULT_JS,
+  js: `function setup() {
+  createCanvas(windowWidth, windowHeight);
+}
+
+function draw() {
+  background(20);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}`,
 };

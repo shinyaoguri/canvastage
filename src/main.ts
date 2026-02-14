@@ -6,6 +6,7 @@ import { SamplesPanel } from "./samples-panel";
 import { ConsolePanel } from "./console-panel";
 import { loadSettings, applySettings, EditorSettings } from "./settings";
 import { DEFAULT_FILES } from "./defaults";
+import { getRandomBasicsSample } from "./samples";
 import { ShareButton } from "./share";
 
 type FileType = "html" | "css" | "js";
@@ -22,8 +23,9 @@ async function init() {
   // 設定を読み込んで適用
   applySettings(await loadSettings());
 
-  // ファイル内容を管理
-  const files: Files = { ...DEFAULT_FILES };
+  // ファイル内容を管理（basicsからランダムに初期サンプルを選択）
+  const initialFiles = getRandomBasicsSample() ?? { ...DEFAULT_FILES };
+  const files: Files = initialFiles;
   let currentFile: FileType = "js";
 
   // タブ
@@ -107,7 +109,21 @@ async function init() {
   </svg>`;
   app.appendChild(newProjectBtn);
 
-  // プロジェクト名
+  // プロジェクト名エリア（再生ボタン + プロジェクト名）
+  const projectBar = document.createElement("div");
+  projectBar.id = "project-bar";
+
+  // 再生/停止ボタン
+  let isRunning = false;
+  const runStopBtn = document.createElement("button");
+  runStopBtn.id = "run-stop-btn";
+  runStopBtn.className = "toolbar-btn";
+  runStopBtn.title = "Run (⌘+Enter)";
+  const playIcon = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6,3 20,12 6,21"/></svg>`;
+  const stopIcon = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>`;
+  runStopBtn.innerHTML = playIcon;
+  projectBar.appendChild(runStopBtn);
+
   const projectNameInput = document.createElement("input");
   projectNameInput.id = "project-name";
   projectNameInput.type = "text";
@@ -116,13 +132,15 @@ async function init() {
   projectNameInput.addEventListener("input", () => {
     shareButton.setProjectName(projectNameInput.value);
   });
-  app.appendChild(projectNameInput);
+  projectBar.appendChild(projectNameInput);
+  app.appendChild(projectBar);
 
   // 新規プロジェクトのクリック処理
   newProjectBtn.onclick = () => {
-    files.html = DEFAULT_FILES.html;
-    files.css = DEFAULT_FILES.css;
-    files.js = DEFAULT_FILES.js;
+    const sample = getRandomBasicsSample() ?? { ...DEFAULT_FILES };
+    files.html = sample.html;
+    files.css = sample.css;
+    files.js = sample.js;
     editor.setValue(files[currentFile]);
     const newName = shareButton.resetProject();
     projectNameInput.value = newName;
@@ -140,6 +158,24 @@ async function init() {
     files[currentFile] = editor.getValue();
     consolePanel.clear();
     preview.run(files);
+    isRunning = true;
+    runStopBtn.innerHTML = stopIcon;
+    runStopBtn.title = "Stop";
+  };
+
+  const stopCode = () => {
+    preview.stop();
+    isRunning = false;
+    runStopBtn.innerHTML = playIcon;
+    runStopBtn.title = "Run (⌘+Enter)";
+  };
+
+  runStopBtn.onclick = () => {
+    if (isRunning) {
+      stopCode();
+    } else {
+      runCode();
+    }
   };
 
   // エディタ

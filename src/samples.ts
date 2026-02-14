@@ -93,3 +93,10 @@ function buildSampleCategories(): SampleCategory[] {
 }
 
 export const SAMPLE_CATEGORIES: SampleCategory[] = buildSampleCategories();
+
+export function getRandomBasicsSample(): Files | null {
+  const basics = SAMPLE_CATEGORIES.find((c) => c.id === "basics");
+  if (!basics || basics.samples.length === 0) return null;
+  const sample = basics.samples[Math.floor(Math.random() * basics.samples.length)];
+  return { ...sample.files };
+}
