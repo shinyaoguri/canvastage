@@ -6,6 +6,7 @@ import { SamplesPanel } from "./samples-panel";
 import { ConsolePanel } from "./console-panel";
 import { loadSettings, applySettings, EditorSettings } from "./settings";
 import { DEFAULT_FILES } from "./defaults";
+import { ShareButton } from "./share";
 
 type FileType = "html" | "css" | "js";
 
@@ -86,6 +87,12 @@ async function init() {
     }
   };
   app.appendChild(fullscreenBtn);
+
+  // シェアボタン
+  new ShareButton(app, () => {
+    files[currentFile] = editor.getValue();
+    return { ...files };
+  });
 
   // プレビュー
   const preview = new Preview(app);
