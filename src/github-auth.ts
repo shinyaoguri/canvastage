@@ -1,39 +1,14 @@
-import { openDB, DBSchema, IDBPDatabase } from "idb";
+import { createStore } from "./idb-store";
 
 // GitHub OAuth App の client_id（publicな値なのでクライアントに埋め込みOK）
 const GITHUB_CLIENT_ID = "Ov23lidMoieTG2EHB1Jw";
 
-const DB_NAME = "canvastage-auth";
-const DB_VERSION = 1;
-const STORE_NAME = "auth" as const;
 const TOKEN_KEY = "github-token";
-
-interface AuthDB extends DBSchema {
-  auth: {
-    key: string;
-    value: { token: string; createdAt: number };
-  };
-}
-
-let dbPromise: Promise<IDBPDatabase<AuthDB>> | null = null;
-
-function getDB(): Promise<IDBPDatabase<AuthDB>> {
-  if (!dbPromise) {
-    dbPromise = openDB<AuthDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      },
-    });
-  }
-  return dbPromise;
-}
+const store = createStore<{ token: string; createdAt: number }>("canvastage-auth", "auth");
 
 export async function getStoredToken(): Promise<string | null> {
   try {
-    const db = await getDB();
-    const record = await db.get(STORE_NAME, TOKEN_KEY);
+    const record = await store.get(TOKEN_KEY);
     return record?.token ?? null;
   } catch {
     return null;
@@ -41,13 +16,11 @@ export async function getStoredToken(): Promise<string | null> {
 }
 
 export async function storeToken(token: string): Promise<void> {
-  const db = await getDB();
-  await db.put(STORE_NAME, { token, createdAt: Date.now() }, TOKEN_KEY);
+  await store.put(TOKEN_KEY, { token, createdAt: Date.now() });
 }
 
 export async function clearToken(): Promise<void> {
-  const db = await getDB();
-  await db.delete(STORE_NAME, TOKEN_KEY);
+  await store.delete(TOKEN_KEY);
 }
 
 export function initiateOAuth(): Promise<string> {

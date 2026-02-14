@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { openDB, DBSchema, IDBPDatabase } from "idb";
+import { createStore } from "./idb-store";
 
 // ========================
 // Zod スキーマ定義
@@ -78,39 +78,14 @@ export type EditorSettings = z.infer<typeof EditorSettingsSchema>;
 export const DEFAULT_SETTINGS: EditorSettings = EditorSettingsSchema.parse({});
 
 // ========================
-// IndexedDB (idb)
+// IndexedDB
 // ========================
-interface CanvastageDB extends DBSchema {
-  settings: {
-    key: string;
-    value: EditorSettings;
-  };
-}
-
-const DB_NAME = "canvastage-db";
-const DB_VERSION = 1;
-const STORE_NAME = "settings" as const;
 const SETTINGS_KEY = "editor-settings";
-
-let dbPromise: Promise<IDBPDatabase<CanvastageDB>> | null = null;
-
-function getDB(): Promise<IDBPDatabase<CanvastageDB>> {
-  if (!dbPromise) {
-    dbPromise = openDB<CanvastageDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      },
-    });
-  }
-  return dbPromise;
-}
+const store = createStore<EditorSettings>("canvastage-db", "settings");
 
 export async function loadSettings(): Promise<EditorSettings> {
   try {
-    const db = await getDB();
-    const saved = await db.get(STORE_NAME, SETTINGS_KEY);
+    const saved = await store.get(SETTINGS_KEY);
 
     if (saved) {
       const result = EditorSettingsSchema.safeParse(saved);
@@ -134,9 +109,8 @@ export async function loadSettings(): Promise<EditorSettings> {
 
 export async function saveSettings(settings: EditorSettings): Promise<void> {
   try {
-    const db = await getDB();
     const validSettings = EditorSettingsSchema.parse(settings);
-    await db.put(STORE_NAME, validSettings, SETTINGS_KEY);
+    await store.put(SETTINGS_KEY, validSettings);
   } catch (error) {
     console.error("Failed to save settings:", error);
   }
