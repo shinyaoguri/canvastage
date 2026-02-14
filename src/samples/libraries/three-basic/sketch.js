@@ -1,5 +1,3 @@
-// @use three
-
 let scene, camera, renderer, cube;
 
 function setup() {

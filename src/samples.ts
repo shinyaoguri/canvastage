@@ -43,6 +43,11 @@ const sampleSketches = import.meta.glob<string>(
   { eager: true, query: "?raw", import: "default" }
 );
 
+const sampleHtmls = import.meta.glob<string>(
+  "./samples/*/*/index.html",
+  { eager: true, query: "?raw", import: "default" }
+);
+
 // カテゴリとサンプルを構築
 function buildSampleCategories(): SampleCategory[] {
   const categories = new Map<string, SampleCategory>();
@@ -70,7 +75,9 @@ function buildSampleCategories(): SampleCategory[] {
     if (match) {
       const [, categoryId, sampleId] = match;
       const sketchPath = `./samples/${categoryId}/${sampleId}/sketch.js`;
+      const htmlPath = `./samples/${categoryId}/${sampleId}/index.html`;
       const sketchCode = sampleSketches[sketchPath];
+      const customHtml = sampleHtmls[htmlPath];
 
       const category = categories.get(categoryId);
       if (category && sketchCode) {
@@ -79,7 +86,7 @@ function buildSampleCategories(): SampleCategory[] {
           name: meta.name,
           description: meta.description,
           files: {
-            html: DEFAULT_HTML,
+            html: customHtml || DEFAULT_HTML,
             css: DEFAULT_CSS,
             js: sketchCode,
           },

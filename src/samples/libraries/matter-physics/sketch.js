@@ -1,5 +1,3 @@
-// @use matter
-
 let engine, world;
 let boxes = [];
 let ground;
