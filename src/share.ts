@@ -5,7 +5,8 @@ import {
   clearToken,
   initiateOAuth,
 } from "./github-auth";
-import { createGist, GistError } from "./gist";
+import { createGist, updateGist, GistError } from "./gist";
+import { generateProjectName } from "./project-name";
 
 type ShareState = "idle" | "authenticating" | "sharing";
 
@@ -13,9 +14,13 @@ export class ShareButton {
   private btn: HTMLButtonElement;
   private state: ShareState = "idle";
   private getFiles: () => Files;
+  private gistId: string | null = null;
+  private dirty = false;
+  private projectName: string;
 
   constructor(container: HTMLElement, getFiles: () => Files) {
     this.getFiles = getFiles;
+    this.projectName = generateProjectName();
 
     this.btn = document.createElement("button");
     this.btn.id = "share-btn";
@@ -30,6 +35,29 @@ export class ShareButton {
     </svg>`;
     this.btn.onclick = () => this.handleClick();
     container.appendChild(this.btn);
+  }
+
+  markDirty(): void {
+    if (!this.dirty) {
+      this.dirty = true;
+      this.updateDirtyState();
+    }
+  }
+
+  setProjectName(name: string): void {
+    this.projectName = name;
+  }
+
+  getProjectName(): string {
+    return this.projectName;
+  }
+
+  resetProject(): string {
+    this.gistId = null;
+    this.dirty = false;
+    this.projectName = generateProjectName();
+    this.updateDirtyState();
+    return this.projectName;
   }
 
   private async handleClick(): Promise<void> {
@@ -54,21 +82,35 @@ export class ShareButton {
       }
 
       this.setState("sharing");
-      showToast("Gistを作成中...", "info");
       const files = this.getFiles();
+      const description = `${this.projectName} — canvastage sketch`;
 
       try {
-        const result = await createGist(token, files);
-        showToast("Gistを作成しました！", "success", result.url);
+        let result;
+        if (this.gistId) {
+          showToast("Gistを更新中...", "info");
+          result = await updateGist(token, this.gistId, files, description);
+          showToast("Gistを更新しました！", "success", result.url);
+        } else {
+          showToast("Gistを作成中...", "info");
+          result = await createGist(token, files, description);
+          showToast("Gistを作成しました！", "success", result.url);
+        }
+        this.gistId = result.id;
+        this.dirty = false;
+        this.updateDirtyState();
       } catch (err) {
         if (err instanceof GistError && err.code === "auth") {
           await clearToken();
-          showToast("セッションが期限切れです。もう一度お試しください。", "error");
+          showToast(
+            "セッションが期限切れです。もう一度お試しください。",
+            "error"
+          );
         } else {
           const msg =
             err instanceof Error
               ? err.message
-              : "Gistの作成に失敗しました。";
+              : "Gistの保存に失敗しました。";
           showToast(msg, "error");
         }
       }
@@ -80,6 +122,12 @@ export class ShareButton {
   private setState(state: ShareState): void {
     this.state = state;
     this.btn.classList.toggle("loading", state !== "idle");
+  }
+
+  private updateDirtyState(): void {
+    const hasSaved = this.gistId !== null;
+    this.btn.classList.toggle("saved", hasSaved && !this.dirty);
+    this.btn.classList.toggle("dirty", this.dirty);
   }
 }
 

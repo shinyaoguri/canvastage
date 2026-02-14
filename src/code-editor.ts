@@ -126,6 +126,7 @@ export interface Editor {
   setLanguage(language: string): void;
   setTheme(theme: string): void;
   applySettings(settings: EditorSettings): void;
+  onDidChange(callback: () => void): void;
 }
 
 export function createEditor(
@@ -231,6 +232,9 @@ export function createEditor(
         },
         matchBrackets: settings.bracketMatching ? "always" : "never",
       });
+    },
+    onDidChange: (callback: () => void) => {
+      editor.onDidChangeModelContent(callback);
     },
   };
 }
