@@ -287,12 +287,16 @@ export class Preview {
   constructor(container: HTMLElement) {
     this.iframe = document.createElement("iframe");
     this.iframe.id = "preview-frame";
-    // allow-scripts のみ付与し allow-same-origin は付けない。
-    // これにより iframe は不透明オリジンとなり、ユーザーのスケッチコードから
-    // window.parent 経由で親の IndexedDB（GitHub トークン）や DOM へ
-    // アクセスできなくなる。console/input ブリッジは postMessage('*') で
-    // 動作するためサンドボックス下でも機能する。
-    this.iframe.setAttribute("sandbox", "allow-scripts");
+    // allow-same-origin を付け、プレビューを親と同一オリジンで実行する。
+    // 不透明オリジン（allow-scripts のみ）にすると getUserMedia（webcam / ML
+    // サンプル）が権限を取得できず、Web Audio（tone-synth）も親のユーザー操作の
+    // user activation が伝播せず鳴らなくなるため。
+    //
+    // ※ トレードオフ: 同一オリジンのため、ユーザーが実行するスケッチコードは
+    //    window.parent 経由で親の IndexedDB（GitHub gist トークン）や DOM に
+    //    到達できる。信頼できないコードを貼り付けて実行しないこと。
+    //    top-navigation / popups / forms は依然ブロックして最小限の保護を残す。
+    this.iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
     // webcam / ML 系サンプルのためにメディア・センサー機能を委譲する
     // （Permissions Policy は sandbox とは独立して制御される）。
     this.iframe.setAttribute(
