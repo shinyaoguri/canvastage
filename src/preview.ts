@@ -227,22 +227,55 @@ const INPUT_BRIDGE_SCRIPT = `
 </script>
 `;
 
+// pattern に一致すれば replacement で置換し、一致しなければ fallback を呼ぶ。
+// ユーザーが index.html を編集してプレースホルダ（style.css の link や
+// sketch.js の script、<head> など）を変更・削除しても、CSS / JS / ブリッジが
+// 無言で消えないようにする。
+function replaceOrElse(
+  html: string,
+  pattern: RegExp,
+  replacement: string,
+  fallback: (html: string) => string
+): string {
+  return pattern.test(html) ? html.replace(pattern, replacement) : fallback(html);
+}
+
+// snippet を </tag> の直前に、無ければ末尾に挿入する fallback を作る
+function injectBefore(closingTag: "head" | "body", snippet: string) {
+  const re = new RegExp(`</${closingTag}>`, "i");
+  return (html: string): string =>
+    re.test(html) ? html.replace(re, `${snippet}</${closingTag}>`) : html + snippet;
+}
+
 function buildHtml(files: Files): string {
   let html = files.html;
 
-  // style.css を inline style に置換
-  html = html.replace(
-    /<link\s+rel="stylesheet"\s+href="style\.css"\s*\/?>/i,
-    `<style>\n${files.css}\n</style>`
+  const styleTag = `<style>\n${files.css}\n</style>`;
+  const sketchTag = `<script>\n${files.js}\n</script>`;
+  const bridges = `${CONSOLE_BRIDGE_SCRIPT}${INPUT_BRIDGE_SCRIPT}`;
+
+  // コンソールブリッジと入力ブリッジを最優先で読み込む（p5.js より前）。
+  // <head> が無ければ <html> 直後、それも無ければ先頭に挿入する。
+  html = replaceOrElse(html, /<head>/i, `<head>${bridges}`, (h) =>
+    /<html[^>]*>/i.test(h)
+      ? h.replace(/<html[^>]*>/i, (m) => `${m}${bridges}`)
+      : bridges + h
   );
 
-  // コンソールブリッジと入力ブリッジスクリプトを<head>の直後に挿入（p5.jsより前に読み込む）
-  html = html.replace(/<head>/i, `<head>${CONSOLE_BRIDGE_SCRIPT}${INPUT_BRIDGE_SCRIPT}`);
+  // style.css の link を inline style に置換。無ければ </head> 前に挿入。
+  html = replaceOrElse(
+    html,
+    /<link\s+rel="stylesheet"\s+href="style\.css"\s*\/?>/i,
+    styleTag,
+    injectBefore("head", styleTag)
+  );
 
-  // sketch.js を inline script に置換
-  html = html.replace(
+  // sketch.js の script を inline script に置換。無ければ </body> 前に挿入。
+  html = replaceOrElse(
+    html,
     /<script\s+src="sketch\.js"\s*><\/script>/i,
-    `<script>\n${files.js}\n</script>`
+    sketchTag,
+    injectBefore("body", sketchTag)
   );
 
   return html;
