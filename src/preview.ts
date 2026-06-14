@@ -287,12 +287,28 @@ export class Preview {
   constructor(container: HTMLElement) {
     this.iframe = document.createElement("iframe");
     this.iframe.id = "preview-frame";
-    // allow-scripts のみ付与し allow-same-origin は付けない。
-    // これにより iframe は不透明オリジンとなり、ユーザーのスケッチコードから
-    // window.parent 経由で親の IndexedDB（GitHub トークン）や DOM へ
-    // アクセスできなくなる。console/input ブリッジは postMessage('*') で
-    // 動作するためサンドボックス下でも機能する。
-    this.iframe.setAttribute("sandbox", "allow-scripts");
+    // ⚠️ 意図的な設計判断 — allow-same-origin は必須。外さないこと。
+    //
+    // 「同一オリジンの iframe で任意コードを実行するのは危険」に見え、
+    // セキュリティ強化として allow-same-origin を外したくなるが、それは過去に
+    // 実際に行って webcam / 音声サンプルを壊した（commit 88374f5 で revert）。
+    //
+    // 不透明オリジン（allow-scripts のみ）にすると:
+    //   - getUserMedia が権限を取得できず webcam / ML サンプルが動かない
+    //   - 親のクリックの user activation が伝播せず Web Audio（tone-synth）が鳴らない
+    //
+    // トレードオフは承知の上で受容している: 同一オリジンのためスケッチコードは
+    // window.parent 経由で親の IndexedDB（gist スコープの GitHub トークン）や DOM に
+    // 到達できる。これは「信頼できないコードを実行しない」前提で許容しており、
+    // UI（設定パネル下部）と README に明記済み。スコープは gist 限定で
+    // リポジトリ等には影響しない。
+    //
+    // 真にコードを隔離したくなったら、sandbox を強める前に「プレビューを別オリジンで
+    // 配信する」か「トークンを httpOnly Cookie + サーバ経由にする」こと。詳細は
+    // CLAUDE.md の "Design decisions" を参照。
+    //
+    // top-navigation / popups / forms は引き続きブロックして最小限の保護を残す。
+    this.iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
     // webcam / ML 系サンプルのためにメディア・センサー機能を委譲する
     // （Permissions Policy は sandbox とは独立して制御される）。
     this.iframe.setAttribute(
