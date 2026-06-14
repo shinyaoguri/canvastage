@@ -39,6 +39,17 @@ To use external libraries, add a `<script src="...">` tag to the `index.html` ta
 - **Zod** — Settings validation
 - **idb** — IndexedDB wrapper for persistence
 
+## Security
+
+Sketches run in an iframe that shares the app's origin (this is required for
+`getUserMedia` webcam/ML samples and Web Audio to work). As a result, code you
+run in the editor has full access to the page, including the GitHub gist token
+stored in IndexedDB after you sign in. **Do not paste and run sketches you don't
+trust.** The bundled samples are safe; arbitrary third-party code is not.
+
+The OAuth token is scoped to `gist` only — it cannot touch your repositories or
+account settings — but it is worth protecting all the same.
+
 ## Deployment
 
 Deployed to **Cloudflare Pages** via GitHub Actions. Pushes to `main` trigger production deploys; pull requests get preview URLs.
