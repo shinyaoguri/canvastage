@@ -10,6 +10,20 @@ import { generateProjectName } from "./project-name";
 
 type ShareState = "idle" | "authenticating" | "sharing";
 
+// JS にシンタックスエラーがあるかを同期的に判定する。
+// new Function はコードをパース（コンパイル）するだけで実行はしないため、
+// 構文エラーのみを捕捉できる（ランタイムエラーは対象外）。
+// CSP の unsafe-eval 禁止などで EvalError になった場合は SyntaxError ではない
+// ので false を返し、検証不能なら保存をブロックしない安全側に倒す。
+function hasJsSyntaxError(code: string): boolean {
+  try {
+    new Function(code);
+    return false;
+  } catch (e) {
+    return e instanceof SyntaxError;
+  }
+}
+
 export class ShareButton {
   private btn: HTMLButtonElement;
   private state: ShareState = "idle";
@@ -17,6 +31,8 @@ export class ShareButton {
   private gistId: string | null = null;
   private dirty = false;
   private projectName: string;
+  private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly AUTO_SAVE_DEBOUNCE_MS = 1500;
 
   constructor(container: HTMLElement, getFiles: () => Files) {
     this.getFiles = getFiles;
@@ -47,11 +63,72 @@ export class ShareButton {
   }
 
   resetProject(): string {
-    this.gistId = null;
-    this.dirty = false;
+    this.detachGist();
     this.projectName = generateProjectName();
     this.updateDirtyState();
     return this.projectName;
+  }
+
+  // 既存 Gist との関連を解除する（サンプル読み込み・新規プロジェクト時）。
+  // 以降は別スケッチ扱いになり、自動更新で前の Gist を上書きしない。
+  detachGist(): void {
+    this.cancelAutoSave();
+    this.gistId = null;
+    this.dirty = false;
+    this.updateDirtyState();
+  }
+
+  // 実行のたびに呼ばれる。Gist が作成済みのときだけ、デバウンスして自動更新する。
+  scheduleAutoSave(): void {
+    if (this.gistId === null) return; // 未保存のプロジェクトは自動更新しない
+    this.cancelAutoSave();
+    this.autoSaveTimer = setTimeout(() => {
+      this.autoSaveTimer = null;
+      void this.autoSave();
+    }, ShareButton.AUTO_SAVE_DEBOUNCE_MS);
+  }
+
+  private cancelAutoSave(): void {
+    if (this.autoSaveTimer !== null) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+  }
+
+  private async autoSave(): Promise<void> {
+    // デバウンス確定時に最新状態を再評価する
+    if (this.gistId === null) return; // detach された
+    if (!this.dirty) return; // 前回保存から変更なし
+    if (this.state !== "idle") {
+      // 手動シェア等と競合中。落ち着いてから再試行する
+      this.scheduleAutoSave();
+      return;
+    }
+
+    const files = this.getFiles();
+    // シンタックスエラーのある状態は保存しない（壊れたコードを Gist に残さない）
+    if (hasJsSyntaxError(files.js)) return;
+
+    // 未認証ならスキップ。ポップアップはユーザー操作起因でないと開けないため。
+    const token = await getStoredToken();
+    if (!token) return;
+
+    this.setState("sharing");
+    try {
+      const description = `${this.projectName} — canvastage sketch`;
+      const result = await updateGist(token, this.gistId, files, description);
+      this.gistId = result.id;
+      this.dirty = false;
+      this.updateDirtyState();
+    } catch (err) {
+      if (err instanceof GistError && err.code === "auth") {
+        await clearToken();
+        showToast("セッションが期限切れです。再度シェアしてください。", "error");
+      }
+      // network / api エラーは dirty のまま残し、次の実行で再試行する（静かに失敗）
+    } finally {
+      this.setState("idle");
+    }
   }
 
   private async handleClick(): Promise<void> {

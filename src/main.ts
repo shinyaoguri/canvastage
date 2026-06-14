@@ -161,6 +161,8 @@ async function init() {
     isRunning = true;
     runStopBtn.innerHTML = stopIcon;
     runStopBtn.title = "Stop";
+    // Gist 作成済みなら、実行のたびに（変更があれば）自動更新する
+    shareButton.scheduleAutoSave();
   };
 
   const stopCode = () => {
@@ -197,6 +199,8 @@ async function init() {
     files.css = sampleFiles.css;
     files.js = sampleFiles.js;
     editor.setValue(files[currentFile]);
+    // 別スケッチを読み込むので既存 Gist とは切り離す（自動更新で上書きしない）
+    shareButton.detachGist();
     runCode();
   });
 
