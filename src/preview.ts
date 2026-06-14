@@ -254,6 +254,18 @@ export class Preview {
   constructor(container: HTMLElement) {
     this.iframe = document.createElement("iframe");
     this.iframe.id = "preview-frame";
+    // allow-scripts のみ付与し allow-same-origin は付けない。
+    // これにより iframe は不透明オリジンとなり、ユーザーのスケッチコードから
+    // window.parent 経由で親の IndexedDB（GitHub トークン）や DOM へ
+    // アクセスできなくなる。console/input ブリッジは postMessage('*') で
+    // 動作するためサンドボックス下でも機能する。
+    this.iframe.setAttribute("sandbox", "allow-scripts");
+    // webcam / ML 系サンプルのためにメディア・センサー機能を委譲する
+    // （Permissions Policy は sandbox とは独立して制御される）。
+    this.iframe.setAttribute(
+      "allow",
+      "camera; microphone; midi; accelerometer; gyroscope; xr-spatial-tracking"
+    );
     container.appendChild(this.iframe);
 
     // 親ウィンドウの入力イベントをiframeに転送
