@@ -34,13 +34,22 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     error_description?: string;
   };
 
+  // インラインスクリプトに埋め込む文字列を安全にシリアライズする。
+  // JSON.stringify は `</script>` や U+2028/U+2029 をエスケープしないため、
+  // 外部由来の値（state, error_description）をそのまま埋め込むと XSS になる。
+  const safe = (value: string): string =>
+    JSON.stringify(value)
+      .replace(/</g, "\\u003c")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
+
   if (tokenData.error || !tokenData.access_token) {
     const errorMsg = tokenData.error_description || tokenData.error || "Unknown error";
     return new Response(
       `<!DOCTYPE html><html><body><script>
 window.opener?.postMessage({
   type: "github-auth-error",
-  error: ${JSON.stringify(errorMsg)}
+  error: ${safe(errorMsg)}
 }, window.location.origin);
 window.close();
 </script></body></html>`,
@@ -52,8 +61,8 @@ window.close();
     `<!DOCTYPE html><html><body><script>
 window.opener?.postMessage({
   type: "github-auth-success",
-  token: ${JSON.stringify(tokenData.access_token)},
-  state: ${JSON.stringify(state || "")}
+  token: ${safe(tokenData.access_token)},
+  state: ${safe(state || "")}
 }, window.location.origin);
 window.close();
 </script></body></html>`,
