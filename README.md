@@ -7,7 +7,6 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **Transparent overlay editor** — Monaco Editor sits on top of the live preview, so your code and artwork coexist
 - **Multi-file editing** — Switch between HTML, CSS, and JavaScript tabs
 - **Instant preview** — Press `Ctrl+Enter` to run your sketch immediately
-- **Library directives** — Load external libraries with `// @use` comments (see below)
 - **40+ editor settings** — Font, theme, opacity, cursor style, and more, persisted in IndexedDB
 - **8 editor themes** — transparent-dark, monokai, dracula, github-dark, nord, solarized, one-dark, cyberpunk
 - **Sample browser** — Explore categorized examples: basics, animation, generative, interaction, 3D, libraries, ML, experimental
@@ -30,15 +29,7 @@ npm run build
 npm run preview
 ```
 
-## Library Directives
-
-Add `// @use` comments at the top of your JavaScript to load external libraries from CDN:
-
-```js
-// @use three              — resolve from built-in registry
-// @use gsap@3.12.0        — specify version
-// @use https://example.com/lib.js  — direct URL
-```
+To use external libraries, add a `<script src="...">` tag to the `index.html` tab (see the **libraries** sample category for examples with Three.js, GSAP, Matter.js, and Tone.js).
 
 ## Tech Stack
 
