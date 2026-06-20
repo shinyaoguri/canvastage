@@ -66,3 +66,16 @@ No test suite exists yet.
   surrounding language when editing a file.
 - `__APP_VERSION__` / `__GIT_COMMIT__` are injected at build time by
   `vite.config.ts` (`define`) and shown in the settings footer.
+
+## Commits & PRs — authorship
+
+The repository owner (Shinya Oguri <ogrsny@gmail.com>) is always the **author**
+of commits and PRs. AI coding agents (Claude Code, GitHub Copilot, etc.) are
+**never** the author — they are credited only as a `Co-Authored-By` trailer.
+
+- Do not set the commit author/committer to the AI agent; leave it as the
+  configured git user.
+- When an AI agent helped, append a trailer naming whichever agent was used at
+  the time, e.g. `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
+  For other agents, use that agent's own identity instead.
+- If no AI agent was involved, add no `Co-Authored-By` trailer.
