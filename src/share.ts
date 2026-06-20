@@ -31,6 +31,9 @@ export class ShareButton {
   private gistId: string | null = null;
   private dirty = false;
   private projectName: string;
+  // 現在の Gist に保存済みのプロジェクト名。リネーム時に旧タイトルファイルを
+  // 消すために覚えておく（gistId が無ければ null）。
+  private savedProjectName: string | null = null;
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
   private static readonly AUTO_SAVE_DEBOUNCE_MS = 1500;
 
@@ -74,6 +77,7 @@ export class ShareButton {
   detachGist(): void {
     this.cancelAutoSave();
     this.gistId = null;
+    this.savedProjectName = null;
     this.dirty = false;
     this.updateDirtyState();
   }
@@ -116,8 +120,16 @@ export class ShareButton {
     this.setState("sharing");
     try {
       const description = `${this.projectName} — canvastage sketch`;
-      const result = await updateGist(token, this.gistId, files, description);
+      const result = await updateGist(
+        token,
+        this.gistId,
+        files,
+        this.projectName,
+        description,
+        this.savedProjectName
+      );
       this.gistId = result.id;
+      this.savedProjectName = this.projectName;
       this.dirty = false;
       this.updateDirtyState();
     } catch (err) {
@@ -160,14 +172,22 @@ export class ShareButton {
         let result;
         if (this.gistId) {
           showToast("Gistを更新中...", "info");
-          result = await updateGist(token, this.gistId, files, description);
+          result = await updateGist(
+            token,
+            this.gistId,
+            files,
+            this.projectName,
+            description,
+            this.savedProjectName
+          );
           showToast("Gistを更新しました！", "success", result.url);
         } else {
           showToast("Gistを作成中...", "info");
-          result = await createGist(token, files, description);
+          result = await createGist(token, files, this.projectName, description);
           showToast("Gistを作成しました！", "success", result.url);
         }
         this.gistId = result.id;
+        this.savedProjectName = this.projectName;
         this.dirty = false;
         this.updateDirtyState();
       } catch (err) {
