@@ -12,6 +12,9 @@ Pages. Sketches can be shared as GitHub gists via OAuth.
 - `src/preview.ts` — builds the sketch HTML and runs it in the preview iframe;
   bridges console output and input events between parent and iframe.
 - `src/share.ts` / `src/gist.ts` / `src/github-auth.ts` — gist sharing + OAuth.
+- `src/openprocessing.ts` / `src/openprocessing-auth.ts` /
+  `src/openprocessing-share.ts` / `src/openprocessing-modal.ts` — OpenProcessing
+  deploy (API client, token storage, button, token/guide modal).
 - `functions/api/auth/callback.ts` — Cloudflare Pages Function for OAuth callback.
 - `src/samples/` — bundled, trusted example sketches (collected via `import.meta.glob`).
 
@@ -51,6 +54,30 @@ gist (`ShareButton.scheduleAutoSave` in `src/share.ts`): only when content
 changed, debounced, skipped on JS syntax error, and silent on success. Loading
 a sample or starting a new project detaches the gist so auto-save can't
 overwrite the previous project. See commit `0328ebe`.
+
+### OpenProcessing deploy
+
+`src/openprocessing.ts` deploys a sketch to OpenProcessing's Public API. Things
+that look wrong but are deliberate:
+
+- **No OAuth, no proxy.** OpenProcessing offers no third-party OAuth app system —
+  the only auth is a personal Bearer token the user generates in their account
+  settings. Their API also sends `Access-Control-Allow-Origin: *` and allows the
+  `authorization` header, so the browser calls the API directly. Don't add a
+  Pages Function proxy "for security" — it buys nothing here (unlike the GitHub
+  flow). The token lives in IndexedDB; the trade-off is the same as the
+  same-origin preview and is noted in the README + the OP modal.
+- **html mode, three code tabs.** Sketches map to OpenProcessing `mode: "html"`
+  with `index.html` / `style.css` / `sketch.js` as code tabs (orderID 0/1/2).
+  p5js mode is JS-tabs-only and would drop the CDN `<script>` tags in
+  `index.html`, breaking the three/matter/gsap/tone/mediapipe samples. Verified
+  against the live API that html mode resolves the relative refs between tabs.
+- **Write needs Plus+.** Only a Plus+ member's write-enabled token can create or
+  update sketches (`whoami` exposes `tokenWriteAccess`). Free tokens are
+  read-only, so the button falls back to the manual-upload guide. This is an
+  OpenProcessing limitation, not a bug.
+- **Manual deploy only.** Unlike the gist auto-save, OP deploy fires only on the
+  button click (avoids burning the paid API rate limit on every run).
 
 ## Commands
 

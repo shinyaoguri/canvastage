@@ -12,6 +12,8 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **Sample browser** — Explore categorized examples: basics, animation, generative, interaction, 3D, libraries, ML, experimental
 - **Console panel** — Captures `console.log` / `warn` / `error` from the preview iframe
 - **Full input forwarding** — Mouse, keyboard, and touch events pass through to the canvas
+- **Share to GitHub Gist** — Sign in with GitHub to publish/auto-update your sketch as a gist
+- **Deploy to OpenProcessing** — Plus+ members can publish straight to OpenProcessing via API; everyone else gets a guided manual-upload flow
 
 ## Getting Started
 
@@ -49,6 +51,13 @@ trust.** The bundled samples are safe; arbitrary third-party code is not.
 
 The OAuth token is scoped to `gist` only — it cannot touch your repositories or
 account settings — but it is worth protecting all the same.
+
+The same applies to the **OpenProcessing API token**: it is stored only in your
+browser's IndexedDB and is sent directly to OpenProcessing (their API allows
+cross-origin requests, so no proxy is involved). A write-enabled token can
+create, update, and delete any of your sketches, so treat it like a password and
+clear it on shared machines. Direct API deploy requires an OpenProcessing
+**Plus+** membership; free accounts use the in-app manual-upload guide instead.
 
 ## Deployment
 

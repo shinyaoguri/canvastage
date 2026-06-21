@@ -592,9 +592,26 @@ a.settings-commit:hover {
   right: calc(max(0.5rem, var(--editor-padding)) + 108px);
 }
 
+/* OpenProcessing デプロイボタン */
+#openprocessing-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 144px);
+}
+
+#openprocessing-btn.loading svg {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+#openprocessing-btn.saved {
+  color: rgba(80, 250, 123, 0.5);
+}
+
+#openprocessing-btn.saved:hover {
+  color: rgba(80, 250, 123, 0.8);
+}
+
 /* 新規プロジェクトボタン */
 #new-project-btn {
-  right: calc(max(0.5rem, var(--editor-padding)) + 144px);
+  right: calc(max(0.5rem, var(--editor-padding)) + 180px);
 }
 
 #share-btn.loading svg {
@@ -961,4 +978,183 @@ a.settings-commit:hover {
 
 .console-message.console-debug {
   color: rgba(255, 255, 255, 0.35);
+}
+
+/* OpenProcessing モーダル */
+#op-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  padding: 1rem;
+}
+
+#op-modal-overlay.open {
+  display: flex;
+}
+
+.op-modal {
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: rgba(20, 20, 24, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.op-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+}
+
+.op-modal-close {
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.op-modal-close:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.op-modal-content {
+  padding: 1.1rem;
+}
+
+.op-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 13px;
+  color: #fff;
+}
+
+.op-section p {
+  margin: 0.4rem 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.op-section a {
+  color: #6bb3ff;
+  text-decoration: none;
+}
+
+.op-section a:hover {
+  text-decoration: underline;
+}
+
+.op-token-row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.7rem 0 0.3rem;
+}
+
+.op-token-row input {
+  flex: 1;
+  padding: 0.45rem 0.6rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.op-btn-primary {
+  padding: 0.45rem 0.9rem;
+  border: none;
+  border-radius: 5px;
+  background: rgba(80, 250, 123, 0.2);
+  color: rgba(80, 250, 123, 0.95);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.op-btn-primary:hover {
+  background: rgba(80, 250, 123, 0.3);
+}
+
+.op-btn-text {
+  border: none;
+  background: transparent;
+  color: rgba(255, 120, 120, 0.8);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0.2rem 0;
+}
+
+.op-btn-text:hover {
+  text-decoration: underline;
+}
+
+.op-token-status {
+  min-height: 1.2em;
+  font-size: 12px;
+}
+
+.op-token-status.op-success {
+  color: rgba(80, 250, 123, 0.9);
+}
+
+.op-token-status.op-error {
+  color: rgba(255, 120, 120, 0.9);
+}
+
+.op-note {
+  font-size: 11.5px;
+  color: rgba(255, 179, 71, 0.8);
+}
+
+.op-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 1.2rem 0;
+}
+
+.op-steps {
+  margin: 0.4rem 0;
+  padding-left: 1.2rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.op-steps code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.05em 0.35em;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.op-copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.op-copy {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.op-copy:hover {
+  background: rgba(255, 255, 255, 0.12);
 }

@@ -241,7 +241,7 @@ function getToastContainer(): HTMLElement {
   return toastContainer;
 }
 
-function showToast(
+export function showToast(
   message: string,
   type: "info" | "success" | "error",
   url?: string
