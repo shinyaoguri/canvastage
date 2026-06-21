@@ -19,5 +19,15 @@ export default tseslint.config(
       },
     },
   },
+  // E2E（Playwright）と設定ファイルは Node 実行。process 等の Node グローバルを許可。
+  // テスト本体はブラウザ API を page.evaluate 内で使うため browser グローバルも残す。
+  {
+    files: ["e2e/**/*.ts", "playwright.config.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
   prettier
 );
