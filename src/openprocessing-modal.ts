@@ -11,6 +11,8 @@ export interface OpenProcessingModalDeps {
   getFiles: () => Files;
   // トークン保存＋write権限確認に成功したら呼ばれる（デプロイ再試行用）。
   onConnected: () => void;
+  // トークンの保存/削除のたびに呼ばれる（接続ドット更新用）。
+  onAuthChanged: () => void;
 }
 
 // OpenProcessing 連携モーダル。
@@ -123,6 +125,7 @@ export class OpenProcessingModal {
       .querySelector("#op-token-clear")
       ?.addEventListener("click", () => {
         void clearToken().then(() => {
+          this.deps.onAuthChanged();
           showToast("トークンを削除しました。", "info");
           void this.open(); // 再描画（削除ボタンを消す）
         });
@@ -166,6 +169,7 @@ export class OpenProcessingModal {
         return;
       }
       await storeToken(token);
+      this.deps.onAuthChanged();
       if (status) {
         status.textContent = `接続しました：${me.username ?? "OpenProcessing"} ✓`;
         status.className = "op-token-status op-success";
