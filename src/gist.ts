@@ -15,8 +15,29 @@ export class GistError extends Error {
   }
 }
 
-function gistFiles(files: Files) {
+// Gist 一覧のタイトルは「登録順の先頭」ではなく「ファイル名のアルファベット順の
+// 先頭」が使われる（.gitignore が常に最上段に出るのと同じ理屈）。プロジェクト名は
+// 頭文字がまちまちなので、確実に先頭へ並ぶよう "_" を接頭辞に付けたタイトルファイル
+// を 1 つ加える。"_"(0x5F) は英小文字より前に並ぶため index.html / sketch.js /
+// style.css のどれよりも前に来て、必ず一覧のタイトルになる。
+function sanitizeName(name: string): string {
+  // Gist のファイル名に使えない文字（/ や改行）を除く。空なら untitled。
+  return name.trim().replace(/[\\/\n\r]+/g, "-") || "untitled";
+}
+
+function titleFileName(projectName: string): string {
+  return `_${sanitizeName(projectName)}.md`;
+}
+
+function titleFileContent(projectName: string): string {
+  return `# ${sanitizeName(projectName)}\n\ncanvastage sketch\n`;
+}
+
+type GistFileMap = Record<string, { content: string } | null>;
+
+function gistFiles(files: Files, projectName: string): GistFileMap {
   return {
+    [titleFileName(projectName)]: { content: titleFileContent(projectName) },
     "index.html": { content: files.html },
     "style.css": { content: files.css },
     "sketch.js": { content: files.js },
@@ -65,12 +86,13 @@ async function sendGistRequest(
 export function createGist(
   token: string,
   files: Files,
+  projectName: string,
   description?: string
 ): Promise<GistResult> {
   return sendGistRequest("https://api.github.com/gists", "POST", token, {
     description: description || "canvastage sketch",
     public: false,
-    files: gistFiles(files),
+    files: gistFiles(files, projectName),
   });
 }
 
@@ -78,15 +100,26 @@ export function updateGist(
   token: string,
   gistId: string,
   files: Files,
-  description?: string
+  projectName: string,
+  description?: string,
+  previousProjectName?: string | null
 ): Promise<GistResult> {
+  const fileMap = gistFiles(files, projectName);
+  // プロジェクト名が変わったら、前回のタイトルファイルは削除して残骸を残さない。
+  // PATCH でファイルを null にすると Gist から削除される。
+  if (
+    previousProjectName &&
+    titleFileName(previousProjectName) !== titleFileName(projectName)
+  ) {
+    fileMap[titleFileName(previousProjectName)] = null;
+  }
   return sendGistRequest(
     `https://api.github.com/gists/${gistId}`,
     "PATCH",
     token,
     {
       description: description || "canvastage sketch",
-      files: gistFiles(files),
+      files: fileMap,
     }
   );
 }
