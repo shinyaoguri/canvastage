@@ -28,9 +28,12 @@ export interface SketchRef {
 export interface WhoAmI {
   userID?: number;
   username?: string;
-  // write 権限の有無。OpenProcessing のフラグ名は実トークンでの検証前なので、
-  // 想定されるいくつかの形を許容して判定する（スモークテストで確定する）。
+  membershipType?: number;
+  // write 権限の有無（スケッチ/コードの作成・更新ができるか）。Plus+ 会員が
+  // write 付きで発行したトークンのみ true。実トークンで確認済みのフラグ名。
   canWrite: boolean;
+  // 非公開データ（自分の private スケッチ）にアクセスできるか。
+  canPrivate: boolean;
   raw: unknown;
 }
 
@@ -137,18 +140,12 @@ export async function whoami(token: string): Promise<WhoAmI> {
     unknown
   > | null;
   const flags = (data ?? {}) as Record<string, unknown>;
-  // 想定されるフラグ名を順に確認（実トークン検証で確定予定）。
-  const scopes = (flags.scopes ?? flags.access ?? {}) as Record<
-    string,
-    unknown
-  >;
-  const canWrite = Boolean(
-    flags.canWrite ?? flags.write ?? scopes.write ?? scopes.canWrite
-  );
   return {
     userID: flags.userID as number | undefined,
     username: flags.username as string | undefined,
-    canWrite,
+    membershipType: flags.membershipType as number | undefined,
+    canWrite: Boolean(flags.tokenWriteAccess),
+    canPrivate: Boolean(flags.tokenPrivateAccess),
     raw: data,
   };
 }
