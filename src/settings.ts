@@ -134,9 +134,13 @@ export function applySettings(settings: EditorSettings): void {
     settings.textShadowColor
   );
 
+  // 注意: CSS ビルド時のミニファイアは `rgba(r,g,b, var(--x))` のように
+  // rgba() の中に var() を入れた宣言を無効と見なして削除する。そのため
+  // 不透明度を含む色は JS 側で完全な rgba 文字列に組み立て、CSS では
+  // 単一の var() として参照する（cursor-bg / current-line-bg と同じ方式）。
   root.style.setProperty(
-    "--editor-line-number-opacity",
-    `${settings.lineNumberOpacity}`
+    "--editor-line-number-color",
+    `rgba(255, 255, 255, ${settings.lineNumberOpacity})`
   );
 
   root.style.setProperty(
@@ -156,8 +160,8 @@ export function applySettings(settings: EditorSettings): void {
   );
 
   root.style.setProperty(
-    "--editor-selection-opacity",
-    `${settings.selectionOpacity}`
+    "--editor-selection-bg",
+    `rgba(255, 255, 255, ${settings.selectionOpacity})`
   );
 
   root.style.setProperty(
@@ -179,13 +183,13 @@ export function applySettings(settings: EditorSettings): void {
   );
 
   root.style.setProperty(
-    "--editor-suggest-bg-opacity",
-    `${settings.suggestBackgroundOpacity}`
+    "--editor-suggest-bg",
+    `rgba(0, 0, 0, ${settings.suggestBackgroundOpacity})`
   );
   root.style.setProperty("--editor-suggest-blur", `${settings.suggestBlur}px`);
   root.style.setProperty(
-    "--editor-suggest-text-opacity",
-    `${settings.suggestTextOpacity}`
+    "--editor-suggest-text-color",
+    `rgba(255, 255, 255, ${settings.suggestTextOpacity})`
   );
 
   root.style.setProperty("--editor-padding", `${settings.editorPadding}px`);

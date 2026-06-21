@@ -8,22 +8,22 @@
   --editor-text-shadow-blur: 3px;
   --editor-text-shadow-color: #000000;
 
-  --editor-line-number-opacity: 0.3;
+  --editor-line-number-color: rgba(255, 255, 255, 0.3);
 
   --editor-cursor-opacity: 0.8;
   --editor-cursor-width: 2px;
   --editor-cursor-color: #ffffff;
   --editor-cursor-bg: rgba(255, 255, 255, 0.8);
 
-  --editor-selection-opacity: 0.15;
+  --editor-selection-bg: rgba(255, 255, 255, 0.15);
 
   --editor-current-line-opacity: 0.05;
   --editor-current-line-color: #ffffff;
   --editor-current-line-bg: rgba(255, 255, 255, 0.05);
 
-  --editor-suggest-bg-opacity: 0.4;
+  --editor-suggest-bg: rgba(0, 0, 0, 0.4);
   --editor-suggest-blur: 8px;
-  --editor-suggest-text-opacity: 0.5;
+  --editor-suggest-text-color: rgba(255, 255, 255, 0.5);
 
   --editor-padding: 32px;
 }
@@ -89,9 +89,11 @@ body > .monaco-editor {
   background: transparent !important;
 }
 
-/* 行番号 */
-.monaco-editor .line-numbers {
-  color: rgba(255, 255, 255, var(--editor-line-number-opacity)) !important;
+/* 行番号。セレクタは Monaco の `.monaco-editor .line-numbers` と同一にすると
+   CSS ミニファイアにマージされて消えるため、`.margin-view-overlays` を挟んで
+   重複を避けつつ specificity も上げる。 */
+.monaco-editor .margin-view-overlays .line-numbers {
+  color: var(--editor-line-number-color) !important;
 }
 
 /* カーソル */
@@ -118,7 +120,7 @@ body > .monaco-editor {
 
 /* 選択範囲 */
 .monaco-editor .selected-text {
-  background: rgba(255, 255, 255, var(--editor-selection-opacity)) !important;
+  background: var(--editor-selection-bg) !important;
 }
 
 /* カーソル行ハイライト */
@@ -201,7 +203,7 @@ body > .monaco-editor {
 
 /* サジェストウィジェット */
 .monaco-editor .suggest-widget {
-  background: rgba(0, 0, 0, var(--editor-suggest-bg-opacity)) !important;
+  background: var(--editor-suggest-bg) !important;
   backdrop-filter: blur(var(--editor-suggest-blur)) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
   box-shadow: none !important;
@@ -212,7 +214,7 @@ body > .monaco-editor {
 }
 
 .monaco-editor .suggest-widget .monaco-list-row {
-  color: rgba(255, 255, 255, var(--editor-suggest-text-opacity)) !important;
+  color: var(--editor-suggest-text-color) !important;
 }
 
 .monaco-editor .suggest-widget .monaco-list-row.focused {
@@ -225,12 +227,12 @@ body > .monaco-editor {
 }
 
 .monaco-editor .suggest-widget .details {
-  background: rgba(0, 0, 0, var(--editor-suggest-bg-opacity)) !important;
+  background: var(--editor-suggest-bg) !important;
   border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .monaco-editor .suggest-widget .details .body {
-  color: rgba(255, 255, 255, var(--editor-suggest-text-opacity)) !important;
+  color: var(--editor-suggest-text-color) !important;
 }
 
 .monaco-editor .suggest-widget .monaco-list-row .icon {
