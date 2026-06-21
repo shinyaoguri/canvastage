@@ -1,6 +1,9 @@
 :root {
   --editor-font-size: 14px;
   --editor-font-family: "JetBrains Mono", monospace;
+  /* UI クローム用の固定フォント。フォント設定（--editor-font-family）に
+     追従させたくない要素（設定パネル等）はこちらを使う。 */
+  --ui-font-family: "JetBrains Mono", monospace;
   --editor-font-weight: 400;
   --editor-line-height: 1.5;
 
@@ -336,7 +339,10 @@ body > .monaco-editor {
   z-index: 200;
   transition: right 0.25s ease;
   overflow-y: auto;
-  font-family: var(--editor-font-family);
+  /* 設定パネル自体はフォント設定の影響を受けない固定 UI フォント。
+     フォント選択肢のプレビュー（各オプションの font-family インライン指定）は
+     個別に上書きされるため、引き続き各フォントで表示される。 */
+  font-family: var(--ui-font-family);
 }
 
 #settings-panel.open {
