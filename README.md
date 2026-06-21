@@ -29,6 +29,10 @@ npm run build
 
 # Preview production build
 npm run preview
+
+# Run E2E tests (settings regression, against the production build)
+npx playwright install chromium   # first time only
+npm run test:e2e
 ```
 
 To use external libraries, add a `<script src="...">` tag to the `index.html` tab (see the **libraries** sample category for examples with Three.js, GSAP, Matter.js, and Tone.js).

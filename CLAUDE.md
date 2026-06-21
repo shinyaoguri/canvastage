@@ -94,8 +94,12 @@ that look wrong but are deliberate:
 - `npm run dev` — dev server
 - `npm run build` — `tsc && vite build`
 - `npm run preview` — preview the production build
-
-No test suite exists yet.
+- `npm run lint` / `npm run format` — ESLint / Prettier
+- `npm run test:e2e` — Playwright E2E (settings regression). Runs against the
+  **production build** (`build` → `preview`), because the settings-opacity bug
+  it guards only appeared after CSS minification — a dev-server test would have
+  missed it. Tests live in `e2e/`. First run needs `npx playwright install
+  chromium`. Not wired into CI yet (local/dev only).
 
 ## Conventions
 
