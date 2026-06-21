@@ -11,6 +11,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Dependabot の PR はセキュリティ上シークレットを受け取れず、Cloudflare への
+    # デプロイが必ず失敗する。ビルド検証は ci.yml が担うので、ここでは丸ごとスキップする。
+    if: github.actor != 'dependabot[bot]'
     permissions:
       contents: read
       deployments: write
