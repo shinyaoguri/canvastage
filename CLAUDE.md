@@ -78,6 +78,16 @@ that look wrong but are deliberate:
   OpenProcessing limitation, not a bug.
 - **Manual deploy only.** Unlike the gist auto-save, OP deploy fires only on the
   button click (avoids burning the paid API rate limit on every run).
+- **List code tabs before writing — never PATCH-then-404.** A 404 from the
+  `/code/{title}` endpoint (e.g. PATCHing a tab that doesn't exist yet, like
+  `index.html` on a fresh sketch) returns an HTML error page **with no CORS
+  header**, so in the browser it surfaces as an opaque CORS failure, not a
+  readable 404 you can catch and retry. So `deploySketch` first does
+  `GET /code` to learn which tabs exist, then POSTs the missing ones and PATCHes
+  the existing ones. Don't "simplify" this back to try-PATCH-catch-404 — it works
+  in curl (no CORS enforcement) but breaks in the browser. `onCreated` also
+  records the new sketch id before code upload so a mid-deploy failure doesn't
+  spawn orphan sketches on retry.
 
 ## Commands
 
