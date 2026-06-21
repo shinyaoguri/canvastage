@@ -8,6 +8,7 @@ import { loadSettings, applySettings, EditorSettings } from "./settings";
 import { DEFAULT_FILES } from "./defaults";
 import { getRandomBasicsSample } from "./samples";
 import { ShareButton } from "./share";
+import { OpenProcessingButton } from "./openprocessing-share";
 
 type FileType = "html" | "css" | "js";
 
@@ -104,6 +105,16 @@ async function init() {
     return { ...files };
   });
 
+  // OpenProcessing デプロイボタン（GitHub とは独立）
+  const openProcessingButton = new OpenProcessingButton(
+    app,
+    () => {
+      files[currentFile] = editor.getValue();
+      return { ...files };
+    },
+    () => shareButton.getProjectName()
+  );
+
   // 新規プロジェクトボタン
   const newProjectBtn = document.createElement("button");
   newProjectBtn.id = "new-project-btn";
@@ -151,6 +162,7 @@ async function init() {
     files.js = sample.js;
     editor.setValue(files[currentFile]);
     const newName = shareButton.resetProject();
+    openProcessingButton.detach();
     projectNameInput.value = newName;
     runCode();
   };
@@ -213,8 +225,9 @@ async function init() {
     files.css = sampleFiles.css;
     files.js = sampleFiles.js;
     editor.setValue(files[currentFile]);
-    // 別スケッチを読み込むので既存 Gist とは切り離す（自動更新で上書きしない）
+    // 別スケッチを読み込むので既存 Gist / OpenProcessing とは切り離す
     shareButton.detachGist();
+    openProcessingButton.detach();
     runCode();
   });
 
