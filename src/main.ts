@@ -31,11 +31,19 @@ async function init() {
   // タブ
   const tabs = document.createElement("div");
   tabs.id = "file-tabs";
-  const tabButtons: Record<FileType, HTMLButtonElement> = {} as Record<FileType, HTMLButtonElement>;
+  const tabButtons: Record<FileType, HTMLButtonElement> = {} as Record<
+    FileType,
+    HTMLButtonElement
+  >;
 
   (["html", "css", "js"] as FileType[]).forEach((type) => {
     const btn = document.createElement("button");
-    btn.textContent = type === "js" ? "sketch.js" : type === "html" ? "index.html" : "style.css";
+    btn.textContent =
+      type === "js"
+        ? "sketch.js"
+        : type === "html"
+          ? "index.html"
+          : "style.css";
     btn.className = type === currentFile ? "active" : "";
     btn.onclick = () => switchTab(type);
     tabs.appendChild(btn);
@@ -181,7 +189,13 @@ async function init() {
   };
 
   // エディタ
-  const editor = createEditor(document.body, files[currentFile], LANGUAGES[currentFile], runCode, initialSettings);
+  const editor = createEditor(
+    document.body,
+    files[currentFile],
+    LANGUAGES[currentFile],
+    runCode,
+    initialSettings
+  );
 
   // エディタ変更時にシェアボタンの状態を更新
   editor.onDidChange(() => {

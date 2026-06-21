@@ -237,14 +237,18 @@ function replaceOrElse(
   replacement: string,
   fallback: (html: string) => string
 ): string {
-  return pattern.test(html) ? html.replace(pattern, replacement) : fallback(html);
+  return pattern.test(html)
+    ? html.replace(pattern, replacement)
+    : fallback(html);
 }
 
 // snippet を </tag> の直前に、無ければ末尾に挿入する fallback を作る
 function injectBefore(closingTag: "head" | "body", snippet: string) {
   const re = new RegExp(`</${closingTag}>`, "i");
   return (html: string): string =>
-    re.test(html) ? html.replace(re, `${snippet}</${closingTag}>`) : html + snippet;
+    re.test(html)
+      ? html.replace(re, `${snippet}</${closingTag}>`)
+      : html + snippet;
 }
 
 function buildHtml(files: Files): string {
@@ -337,8 +341,12 @@ export class Preview {
         button: e.button,
       });
     };
-    document.addEventListener("mousemove", (e) => sendMouseEvent(e, "mousemove"));
-    document.addEventListener("mousedown", (e) => sendMouseEvent(e, "mousedown"));
+    document.addEventListener("mousemove", (e) =>
+      sendMouseEvent(e, "mousemove")
+    );
+    document.addEventListener("mousedown", (e) =>
+      sendMouseEvent(e, "mousedown")
+    );
     document.addEventListener("mouseup", (e) => sendMouseEvent(e, "mouseup"));
 
     // ホイールイベント
@@ -379,8 +387,12 @@ export class Preview {
       }));
       post({ type: "touch", eventType, touches });
     };
-    document.addEventListener("touchstart", (e) => sendTouchEvent(e, "touchstart"));
-    document.addEventListener("touchmove", (e) => sendTouchEvent(e, "touchmove"));
+    document.addEventListener("touchstart", (e) =>
+      sendTouchEvent(e, "touchstart")
+    );
+    document.addEventListener("touchmove", (e) =>
+      sendTouchEvent(e, "touchmove")
+    );
     document.addEventListener("touchend", (e) => sendTouchEvent(e, "touchend"));
   }
 

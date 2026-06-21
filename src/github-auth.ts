@@ -4,7 +4,10 @@ import { createStore } from "./idb-store";
 const GITHUB_CLIENT_ID = "Ov23lidMoieTG2EHB1Jw";
 
 const TOKEN_KEY = "github-token";
-const store = createStore<{ token: string; createdAt: number }>("canvastage-auth", "auth");
+const store = createStore<{ token: string; createdAt: number }>(
+  "canvastage-auth",
+  "auth"
+);
 
 export async function getStoredToken(): Promise<string | null> {
   try {
@@ -46,7 +49,11 @@ export function initiateOAuth(): Promise<string> {
     );
 
     if (!popup) {
-      reject(new Error("ポップアップがブロックされました。ポップアップを許可してください。"));
+      reject(
+        new Error(
+          "ポップアップがブロックされました。ポップアップを許可してください。"
+        )
+      );
       return;
     }
 

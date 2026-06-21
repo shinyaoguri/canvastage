@@ -101,9 +101,11 @@ export class SamplesPanel {
     });
 
     // 閉じるボタン
-    this.panel.querySelector(".samples-close")?.addEventListener("click", () => {
-      this.close();
-    });
+    this.panel
+      .querySelector(".samples-close")
+      ?.addEventListener("click", () => {
+        this.close();
+      });
 
     // 初期表示: 最初のカテゴリを選択
     const firstCategoryBtn = this.panel.querySelector(".samples-category-btn");

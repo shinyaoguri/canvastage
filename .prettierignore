@@ -1,0 +1,7 @@
+dist
+node_modules
+package-lock.json
+*.md
+
+# 信頼済みの学習用サンプル。原形を保つため整形しない。
+src/samples

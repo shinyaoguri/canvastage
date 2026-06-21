@@ -33,20 +33,22 @@ const categoryMetas = import.meta.glob<CategoryMeta>(
   { eager: true, import: "default" }
 );
 
-const sampleMetas = import.meta.glob<SampleMeta>(
-  "./samples/*/*/meta.json",
-  { eager: true, import: "default" }
-);
+const sampleMetas = import.meta.glob<SampleMeta>("./samples/*/*/meta.json", {
+  eager: true,
+  import: "default",
+});
 
-const sampleSketches = import.meta.glob<string>(
-  "./samples/*/*/sketch.js",
-  { eager: true, query: "?raw", import: "default" }
-);
+const sampleSketches = import.meta.glob<string>("./samples/*/*/sketch.js", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+});
 
-const sampleHtmls = import.meta.glob<string>(
-  "./samples/*/*/index.html",
-  { eager: true, query: "?raw", import: "default" }
-);
+const sampleHtmls = import.meta.glob<string>("./samples/*/*/index.html", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+});
 
 // カテゴリとサンプルを構築
 function buildSampleCategories(): SampleCategory[] {
@@ -104,6 +106,7 @@ export const SAMPLE_CATEGORIES: SampleCategory[] = buildSampleCategories();
 export function getRandomBasicsSample(): Files | null {
   const basics = SAMPLE_CATEGORIES.find((c) => c.id === "basics");
   if (!basics || basics.samples.length === 0) return null;
-  const sample = basics.samples[Math.floor(Math.random() * basics.samples.length)];
+  const sample =
+    basics.samples[Math.floor(Math.random() * basics.samples.length)];
   return { ...sample.files };
 }
