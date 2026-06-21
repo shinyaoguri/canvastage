@@ -1,6 +1,6 @@
 :root {
   --editor-font-size: 14px;
-  --editor-font-family: 'JetBrains Mono', monospace;
+  --editor-font-family: "JetBrains Mono", monospace;
   --editor-font-weight: 400;
   --editor-line-height: 1.5;
 
@@ -112,7 +112,8 @@ body > .monaco-editor {
 .monaco-editor .view-line span {
   opacity: var(--editor-text-opacity) !important;
   font-weight: var(--editor-font-weight) !important;
-  text-shadow: 0 0 var(--editor-text-shadow-blur) var(--editor-text-shadow-color);
+  text-shadow: 0 0 var(--editor-text-shadow-blur)
+    var(--editor-text-shadow-color);
 }
 
 /* 選択範囲 */
@@ -255,7 +256,9 @@ body > .monaco-editor {
   background: transparent;
   color: rgba(255, 255, 255, 0.3);
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 #file-tabs button:hover {
@@ -281,7 +284,9 @@ body > .monaco-editor {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   z-index: 100;
 }
 
@@ -650,7 +655,9 @@ a.settings-commit:hover {
   text-align: center;
   padding: 4px 8px;
   outline: none;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   width: 100px;
 }
 

@@ -135,7 +135,10 @@ export class ShareButton {
     } catch (err) {
       if (err instanceof GistError && err.code === "auth") {
         await clearToken();
-        showToast("セッションが期限切れです。再度シェアしてください。", "error");
+        showToast(
+          "セッションが期限切れです。再度シェアしてください。",
+          "error"
+        );
       }
       // network / api エラーは dirty のまま残し、次の実行で再試行する（静かに失敗）
     } finally {
@@ -183,7 +186,12 @@ export class ShareButton {
           showToast("Gistを更新しました！", "success", result.url);
         } else {
           showToast("Gistを作成中...", "info");
-          result = await createGist(token, files, this.projectName, description);
+          result = await createGist(
+            token,
+            files,
+            this.projectName,
+            description
+          );
           showToast("Gistを作成しました！", "success", result.url);
         }
         this.gistId = result.id;
@@ -199,9 +207,7 @@ export class ShareButton {
           );
         } else {
           const msg =
-            err instanceof Error
-              ? err.message
-              : "Gistの保存に失敗しました。";
+            err instanceof Error ? err.message : "Gistの保存に失敗しました。";
           showToast(msg, "error");
         }
       }

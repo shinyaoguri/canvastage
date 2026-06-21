@@ -75,65 +75,173 @@ const SETTING_GROUPS: { title: string; settings: SettingDef[] }[] = [
   {
     title: "Theme",
     settings: [
-      { key: "editorTheme", label: "Color Scheme", type: "select", options: EDITOR_THEMES },
+      {
+        key: "editorTheme",
+        label: "Color Scheme",
+        type: "select",
+        options: EDITOR_THEMES,
+      },
     ],
   },
   {
     title: "Font",
     settings: [
-      { key: "fontSize", label: "Size", type: "range", min: 10, max: 24, step: 1 },
-      { key: "fontWeight", label: "Weight", type: "range", min: 100, max: 900, step: 100 },
-      { key: "lineHeight", label: "Line Height", type: "range", min: 1, max: 2, step: 0.1 },
-      { key: "fontFamily", label: "Family", type: "select", options: GOOGLE_FONTS },
+      {
+        key: "fontSize",
+        label: "Size",
+        type: "range",
+        min: 10,
+        max: 24,
+        step: 1,
+      },
+      {
+        key: "fontWeight",
+        label: "Weight",
+        type: "range",
+        min: 100,
+        max: 900,
+        step: 100,
+      },
+      {
+        key: "lineHeight",
+        label: "Line Height",
+        type: "range",
+        min: 1,
+        max: 2,
+        step: 0.1,
+      },
+      {
+        key: "fontFamily",
+        label: "Family",
+        type: "select",
+        options: GOOGLE_FONTS,
+      },
     ],
   },
   {
     title: "Text",
     settings: [
-      { key: "textOpacity", label: "Opacity", type: "range", min: 0, max: 1, step: 0.05 },
-      { key: "textShadowBlur", label: "Shadow Blur", type: "range", min: 0, max: 10, step: 1 },
+      {
+        key: "textOpacity",
+        label: "Opacity",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+      {
+        key: "textShadowBlur",
+        label: "Shadow Blur",
+        type: "range",
+        min: 0,
+        max: 10,
+        step: 1,
+      },
       { key: "textShadowColor", label: "Shadow Color", type: "color" },
     ],
   },
   {
     title: "Line Numbers",
     settings: [
-      { key: "lineNumberOpacity", label: "Opacity", type: "range", min: 0, max: 1, step: 0.05 },
+      {
+        key: "lineNumberOpacity",
+        label: "Opacity",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
     ],
   },
   {
     title: "Cursor",
     settings: [
-      { key: "cursorOpacity", label: "Opacity", type: "range", min: 0, max: 1, step: 0.05 },
-      { key: "cursorWidth", label: "Width", type: "range", min: 1, max: 4, step: 1 },
+      {
+        key: "cursorOpacity",
+        label: "Opacity",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+      {
+        key: "cursorWidth",
+        label: "Width",
+        type: "range",
+        min: 1,
+        max: 4,
+        step: 1,
+      },
       { key: "cursorColor", label: "Color", type: "color" },
     ],
   },
   {
     title: "Selection",
     settings: [
-      { key: "selectionOpacity", label: "Opacity", type: "range", min: 0, max: 0.5, step: 0.05 },
+      {
+        key: "selectionOpacity",
+        label: "Opacity",
+        type: "range",
+        min: 0,
+        max: 0.5,
+        step: 0.05,
+      },
     ],
   },
   {
     title: "Current Line",
     settings: [
-      { key: "currentLineOpacity", label: "Opacity", type: "range", min: 0, max: 0.3, step: 0.01 },
+      {
+        key: "currentLineOpacity",
+        label: "Opacity",
+        type: "range",
+        min: 0,
+        max: 0.3,
+        step: 0.01,
+      },
       { key: "currentLineColor", label: "Color", type: "color" },
     ],
   },
   {
     title: "Autocomplete",
     settings: [
-      { key: "suggestBackgroundOpacity", label: "Background", type: "range", min: 0, max: 1, step: 0.05 },
-      { key: "suggestBlur", label: "Blur", type: "range", min: 0, max: 20, step: 1 },
-      { key: "suggestTextOpacity", label: "Text Opacity", type: "range", min: 0, max: 1, step: 0.05 },
+      {
+        key: "suggestBackgroundOpacity",
+        label: "Background",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+      {
+        key: "suggestBlur",
+        label: "Blur",
+        type: "range",
+        min: 0,
+        max: 20,
+        step: 1,
+      },
+      {
+        key: "suggestTextOpacity",
+        label: "Text Opacity",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
     ],
   },
   {
     title: "Layout",
     settings: [
-      { key: "editorPadding", label: "Padding", type: "range", min: 0, max: 64, step: 4 },
+      {
+        key: "editorPadding",
+        label: "Padding",
+        type: "range",
+        min: 0,
+        max: 64,
+        step: 4,
+      },
     ],
   },
   {
@@ -150,7 +258,14 @@ const SETTING_GROUPS: { title: string; settings: SettingDef[] }[] = [
   {
     title: "Code Style",
     settings: [
-      { key: "tabSize", label: "Tab Size", type: "range", min: 2, max: 8, step: 1 },
+      {
+        key: "tabSize",
+        label: "Tab Size",
+        type: "range",
+        min: 2,
+        max: 8,
+        step: 1,
+      },
       {
         key: "renderWhitespace",
         label: "Whitespace",
@@ -277,7 +392,7 @@ export class SettingsPanel {
           html += `<input type="color" data-key="${setting.key}" value="${value}">`;
         } else if (setting.type === "select" && setting.options) {
           // カスタムドロップダウン
-          const currentOpt = setting.options.find(o => o.value === value);
+          const currentOpt = setting.options.find((o) => o.value === value);
           const currentLabel = currentOpt?.label || "";
           const isFontSelect = setting.key === "fontFamily";
           const fontStyle = isFontSelect ? `style="font-family: ${value}"` : "";
@@ -286,7 +401,9 @@ export class SettingsPanel {
             <div class="custom-select-options">`;
           for (const opt of setting.options) {
             const selected = opt.value === value ? "selected" : "";
-            const optFontStyle = isFontSelect ? `style="font-family: ${opt.value}"` : "";
+            const optFontStyle = isFontSelect
+              ? `style="font-family: ${opt.value}"`
+              : "";
             html += `<div class="custom-select-option ${selected}" data-value="${opt.value}" ${optFontStyle}>${opt.label}</div>`;
           }
           html += `</div></div>`;
@@ -328,42 +445,50 @@ export class SettingsPanel {
 
   private bindEvents(): void {
     // 入力変更（range, text, color）
-    this.panel.querySelectorAll("input:not([type='checkbox'])").forEach((input) => {
-      input.addEventListener("input", (e) => {
-        const target = e.target as HTMLInputElement;
-        const key = target.dataset.key as keyof EditorSettings;
-        let value: string | number = target.value;
+    this.panel
+      .querySelectorAll("input:not([type='checkbox'])")
+      .forEach((input) => {
+        input.addEventListener("input", (e) => {
+          const target = e.target as HTMLInputElement;
+          const key = target.dataset.key as keyof EditorSettings;
+          let value: string | number = target.value;
 
-        if (target.type === "range") {
-          value = parseFloat(value);
-          const valueSpan = target.nextElementSibling as HTMLSpanElement;
-          if (valueSpan) valueSpan.textContent = String(value);
-        }
+          if (target.type === "range") {
+            value = parseFloat(value);
+            const valueSpan = target.nextElementSibling as HTMLSpanElement;
+            if (valueSpan) valueSpan.textContent = String(value);
+          }
 
-        (this.settings as unknown as Record<string, string | number>)[key] = value;
-        this.notifyChange();
+          (this.settings as unknown as Record<string, string | number>)[key] =
+            value;
+          this.notifyChange();
+        });
       });
-    });
 
     // チェックボックス変更
     this.panel.querySelectorAll("input[type='checkbox']").forEach((input) => {
       input.addEventListener("change", (e) => {
         const target = e.target as HTMLInputElement;
         const key = target.dataset.key as keyof EditorSettings;
-        (this.settings as unknown as Record<string, boolean>)[key] = target.checked;
+        (this.settings as unknown as Record<string, boolean>)[key] =
+          target.checked;
         this.notifyChange();
       });
     });
 
     // カスタムドロップダウン
     this.panel.querySelectorAll(".custom-select").forEach((dropdown) => {
-      const trigger = dropdown.querySelector(".custom-select-trigger") as HTMLElement;
-      const options = dropdown.querySelector(".custom-select-options") as HTMLElement;
+      const trigger = dropdown.querySelector(
+        ".custom-select-trigger"
+      ) as HTMLElement;
+      const options = dropdown.querySelector(
+        ".custom-select-options"
+      ) as HTMLElement;
 
       trigger?.addEventListener("click", (e) => {
         e.stopPropagation();
         // 他のドロップダウンを閉じる
-        this.panel.querySelectorAll(".custom-select.open").forEach(d => {
+        this.panel.querySelectorAll(".custom-select.open").forEach((d) => {
           if (d !== dropdown) d.classList.remove("open");
         });
         dropdown.classList.toggle("open");
@@ -371,13 +496,17 @@ export class SettingsPanel {
 
       options?.querySelectorAll(".custom-select-option").forEach((option) => {
         option.addEventListener("click", () => {
-          const key = (dropdown as HTMLElement).dataset.key as keyof EditorSettings;
+          const key = (dropdown as HTMLElement).dataset
+            .key as keyof EditorSettings;
           const value = (option as HTMLElement).dataset.value as string;
           const label = option.textContent || "";
-          const isFontSelect = (dropdown as HTMLElement).dataset.font === "true";
+          const isFontSelect =
+            (dropdown as HTMLElement).dataset.font === "true";
 
           // 選択状態を更新
-          options.querySelectorAll(".custom-select-option").forEach(o => o.classList.remove("selected"));
+          options
+            .querySelectorAll(".custom-select-option")
+            .forEach((o) => o.classList.remove("selected"));
           option.classList.add("selected");
 
           // トリガーのテキストを更新
@@ -387,7 +516,8 @@ export class SettingsPanel {
           }
 
           // 設定を更新
-          (this.settings as unknown as Record<string, string | number>)[key] = value;
+          (this.settings as unknown as Record<string, string | number>)[key] =
+            value;
           this.notifyChange();
 
           // ドロップダウンを閉じる
@@ -398,21 +528,27 @@ export class SettingsPanel {
 
     // ドロップダウン外クリックで閉じる
     document.addEventListener("click", () => {
-      this.panel.querySelectorAll(".custom-select.open").forEach(d => d.classList.remove("open"));
+      this.panel
+        .querySelectorAll(".custom-select.open")
+        .forEach((d) => d.classList.remove("open"));
     });
 
     // リセット
-    this.panel.querySelector(".settings-reset")?.addEventListener("click", () => {
-      this.settings = { ...DEFAULT_SETTINGS };
-      this.notifyChange();
-      this.panel.innerHTML = this.buildHTML();
-      this.bindEvents();
-    });
+    this.panel
+      .querySelector(".settings-reset")
+      ?.addEventListener("click", () => {
+        this.settings = { ...DEFAULT_SETTINGS };
+        this.notifyChange();
+        this.panel.innerHTML = this.buildHTML();
+        this.bindEvents();
+      });
 
     // 閉じる
-    this.panel.querySelector(".settings-close")?.addEventListener("click", () => {
-      this.close();
-    });
+    this.panel
+      .querySelector(".settings-close")
+      ?.addEventListener("click", () => {
+        this.close();
+      });
   }
 
   toggle(): void {

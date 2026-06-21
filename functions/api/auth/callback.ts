@@ -44,7 +44,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       .replace(/\u2029/g, "\\u2029");
 
   if (tokenData.error || !tokenData.access_token) {
-    const errorMsg = tokenData.error_description || tokenData.error || "Unknown error";
+    const errorMsg =
+      tokenData.error_description || tokenData.error || "Unknown error";
     return new Response(
       `<!DOCTYPE html><html><body><script>
 window.opener?.postMessage({
