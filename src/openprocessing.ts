@@ -182,25 +182,41 @@ export async function updateSketch(
   await apiFetch(`/api/sketch/${sketchId}`, { method: "PATCH", token, body });
 }
 
-// コードタブを作成 or 更新する。既存タブは PATCH、無ければ（404）POST で作成。
-export async function upsertCode(
+// スケッチの既存コードタブのタイトル集合を取得する。
+export async function listCodeTitles(
+  token: string,
+  sketchId: number
+): Promise<Set<string>> {
+  const data = unwrap(
+    await apiFetch(`/api/sketch/${sketchId}/code`, { token })
+  );
+  const titles = new Set<string>();
+  if (Array.isArray(data)) {
+    for (const c of data) {
+      const t = (c as { title?: unknown })?.title;
+      if (typeof t === "string") titles.add(t);
+    }
+  }
+  return titles;
+}
+
+// コードタブを反映する。存在すれば PATCH、無ければ POST。
+//
+// 重要: 「まず PATCH→404 なら POST」という手は使えない。OpenProcessing の 404
+// レスポンス（特に /code/index.html）は CORS ヘッダを返さないため、ブラウザでは
+// 404 を読めず CORS エラーとして失敗する。呼び出し側で exists を先に判定して
+// 404 を踏まないようにする。
+export async function putCode(
   token: string,
   sketchId: number,
   title: string,
   code: string,
-  orderID: number
+  orderID: number,
+  exists: boolean
 ): Promise<void> {
   const path = `/api/sketch/${sketchId}/code/${encodeURIComponent(title)}`;
   const body = { code, orderID };
-  try {
-    await apiFetch(path, { method: "PATCH", token, body });
-  } catch (err) {
-    if (err instanceof OpenProcessingError && err.status === 404) {
-      await apiFetch(path, { method: "POST", token, body });
-      return;
-    }
-    throw err;
-  }
+  await apiFetch(path, { method: exists ? "PATCH" : "POST", token, body });
 }
 
 // canvastage の 3 ファイルを html モードの 3 タブとして並べる（タブ順 = orderID）。
@@ -213,27 +229,35 @@ const CODE_TABS: ReadonlyArray<{ title: string; pick: (f: Files) => string }> =
 
 // スケッチを新規作成 or 既存更新し、3 タブのコードを反映する。
 // existingId が null/undefined のときは新規作成。
+// onCreated は新規作成の直後（コード反映の前）に呼ばれる。途中失敗時も呼び出し側で
+// 新しい sketchId を保持でき、再試行でオーファンスケッチを量産しない。
 export async function deploySketch(
   token: string,
   files: Files,
   meta: SketchMeta,
-  existingId?: number | null
+  existingId?: number | null,
+  onCreated?: (id: number) => void
 ): Promise<SketchRef> {
   let ref: SketchRef;
   if (existingId == null) {
     ref = await createSketch(token, meta);
+    onCreated?.(ref.id);
   } else {
     await updateSketch(token, existingId, meta);
     ref = { id: existingId, url: `${BASE_URL}/sketch/${existingId}` };
   }
 
+  // 既存タブを先に取得し、404（CORS 無し）を踏まずに PATCH/POST を振り分ける。
+  const existing = await listCodeTitles(token, ref.id);
   for (let i = 0; i < CODE_TABS.length; i++) {
-    await upsertCode(
+    const tab = CODE_TABS[i];
+    await putCode(
       token,
       ref.id,
-      CODE_TABS[i].title,
-      CODE_TABS[i].pick(files),
-      i
+      tab.title,
+      tab.pick(files),
+      i,
+      existing.has(tab.title)
     );
   }
   return ref;

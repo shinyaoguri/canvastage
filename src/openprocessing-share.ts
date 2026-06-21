@@ -97,7 +97,12 @@ export class OpenProcessingButton {
         token,
         this.getFiles(),
         { title: this.getProjectName(), isPrivate: true },
-        this.sketchId
+        this.sketchId,
+        // 作成直後に id を保持。途中で失敗しても再試行は更新になり、
+        // 空スケッチを量産しない。
+        (id) => {
+          this.sketchId = id;
+        }
       );
       this.sketchId = ref.id;
       this.btn.classList.add("saved");
