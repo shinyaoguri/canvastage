@@ -300,6 +300,19 @@ body > .monaco-editor {
   height: 16px;
 }
 
+/* 認証状態をアイコンの明るさで表す（接続ドットの代わり）。
+   未認証 = 既定の薄いグレー（くすんだ見た目）、認証済み = 明るい白。
+   この後で定義する saved(緑)/dirty(黄丸) が優先される。 */
+#share-btn.connected,
+#openprocessing-btn.connected {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+#share-btn.connected:hover,
+#openprocessing-btn.connected:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 #settings-btn {
   right: calc(max(0.5rem, var(--editor-padding)) + 36px);
 }
@@ -646,20 +659,6 @@ a.settings-commit:hover {
   height: 6px;
   border-radius: 50%;
   background: rgba(255, 179, 71, 0.8);
-}
-
-/* 接続（認証）ドット: 左下。点灯=認証済み。
-   saved(緑)/dirty(右上黄) とは別位置・別色で衝突しない。 */
-#share-btn.connected::before,
-#openprocessing-btn.connected::before {
-  content: "";
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(107, 179, 255, 0.9);
 }
 
 /* プロジェクトバー（再生ボタン + プロジェクト名） */
