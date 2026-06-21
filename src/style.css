@@ -609,6 +609,17 @@ a.settings-commit:hover {
   color: rgba(80, 250, 123, 0.8);
 }
 
+#openprocessing-btn.dirty::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 179, 71, 0.8);
+}
+
 /* 新規プロジェクトボタン */
 #new-project-btn {
   right: calc(max(0.5rem, var(--editor-padding)) + 180px);

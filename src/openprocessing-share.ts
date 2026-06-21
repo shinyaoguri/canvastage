@@ -18,6 +18,8 @@ export class OpenProcessingButton {
   private getProjectName: () => string;
   private modal: OpenProcessingModal;
   private sketchId: number | null = null;
+  // デプロイ済み内容から変更があるか。デプロイ後の編集で true になる。
+  private dirty = false;
 
   constructor(
     container: HTMLElement,
@@ -44,9 +46,29 @@ export class OpenProcessingButton {
     container.appendChild(this.btn);
   }
 
+  // エディタ編集時に呼ばれる。デプロイ済みなら「未デプロイの変更あり」を示す。
+  markDirty(): void {
+    if (!this.dirty) {
+      this.dirty = true;
+      this.updateState();
+    }
+  }
+
   // 別スケッチ（新規/サンプル読込）に切り替えたら連携を解除する。
   detach(): void {
     this.sketchId = null;
+    this.dirty = false;
+    this.updateState();
+  }
+
+  // ボタンの見た目で 3 状態を表す:
+  //   未デプロイ        → 無印
+  //   最新がデプロイ済み → saved（緑）
+  //   デプロイ後に編集   → dirty（黄色い丸）
+  private updateState(): void {
+    const deployed = this.sketchId !== null;
+    this.btn.classList.toggle("saved", deployed && !this.dirty);
+    this.btn.classList.toggle("dirty", deployed && this.dirty);
   }
 
   private async handleClick(): Promise<void> {
@@ -105,7 +127,8 @@ export class OpenProcessingButton {
         }
       );
       this.sketchId = ref.id;
-      this.btn.classList.add("saved");
+      this.dirty = false;
+      this.updateState();
       showToast(
         isCreate
           ? "OpenProcessing に作成しました！"
