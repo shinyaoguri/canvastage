@@ -209,9 +209,10 @@ async function init() {
     initialSettings
   );
 
-  // エディタ変更時にシェアボタンの状態を更新
+  // エディタ変更時にシェアボタン / OpenProcessing ボタンの状態を更新
   editor.onDidChange(() => {
     shareButton.markDirty();
+    openProcessingButton.markDirty();
   });
 
   // 設定変更時にエディタへ反映
