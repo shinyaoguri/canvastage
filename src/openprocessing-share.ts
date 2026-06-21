@@ -1,6 +1,6 @@
 import type { Files } from "./preview";
 import { deploySketch, whoami, OpenProcessingError } from "./openprocessing";
-import { getStoredToken } from "./openprocessing-auth";
+import { getStoredToken, clearToken } from "./openprocessing-auth";
 import { OpenProcessingModal } from "./openprocessing-modal";
 import { showToast } from "./share";
 
@@ -31,6 +31,8 @@ export class OpenProcessingButton {
     this.modal = new OpenProcessingModal({
       getFiles,
       onConnected: () => void this.deploy(),
+      // トークン保存/削除のたびに接続ドットを更新する。
+      onAuthChanged: () => void this.refreshAuth(),
     });
 
     this.btn = document.createElement("button");
@@ -44,6 +46,15 @@ export class OpenProcessingButton {
     </svg>`;
     this.btn.onclick = () => void this.handleClick();
     container.appendChild(this.btn);
+
+    // 起動時に保存済みトークンの有無で接続ドットを点灯/消灯する。
+    void this.refreshAuth();
+  }
+
+  // 保存済み OpenProcessing トークンの有無を見て接続ドットを更新する。
+  async refreshAuth(): Promise<void> {
+    const token = await getStoredToken();
+    this.btn.classList.toggle("connected", Boolean(token));
   }
 
   // エディタ編集時に呼ばれる。デプロイ済みなら「未デプロイの変更あり」を示す。
@@ -137,7 +148,16 @@ export class OpenProcessingButton {
         ref.url
       );
     } catch (err) {
-      if (err instanceof OpenProcessingError && err.code === "forbidden") {
+      if (err instanceof OpenProcessingError && err.code === "auth") {
+        // トークン失効。保存トークンを消して接続ドットも消灯し、再入力を促す。
+        await clearToken();
+        this.btn.classList.remove("connected");
+        showToast("トークンが無効です。設定し直してください。", "error");
+        void this.modal.open();
+      } else if (
+        err instanceof OpenProcessingError &&
+        err.code === "forbidden"
+      ) {
         showToast(
           "書き込み権限がありません（Plus+ の write トークンが必要です）。",
           "error"

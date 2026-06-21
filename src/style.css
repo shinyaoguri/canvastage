@@ -648,6 +648,20 @@ a.settings-commit:hover {
   background: rgba(255, 179, 71, 0.8);
 }
 
+/* 接続（認証）ドット: 左下。点灯=認証済み。
+   saved(緑)/dirty(右上黄) とは別位置・別色で衝突しない。 */
+#share-btn.connected::before,
+#openprocessing-btn.connected::before {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(107, 179, 255, 0.9);
+}
+
 /* プロジェクトバー（再生ボタン + プロジェクト名） */
 #project-bar {
   position: absolute;
