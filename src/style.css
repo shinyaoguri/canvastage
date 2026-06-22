@@ -394,8 +394,6 @@ body > .monaco-editor {
 .settings-footer {
   padding: 16px 20px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  /* 下部に固定 */
-  flex-shrink: 0;
 }
 
 .settings-footer .settings-reset {
@@ -443,8 +441,6 @@ body > .monaco-editor {
   gap: 6px;
   padding: 0 20px 20px;
   text-align: center;
-  /* 下部に固定 */
-  flex-shrink: 0;
 }
 
 .settings-version {

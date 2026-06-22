@@ -428,7 +428,9 @@ export class SettingsPanel {
       html += `</div>`;
     }
 
-    html += `</div>`;
+    // フッター/メタも .settings-content（スクロール領域）の中に置き、ヘッダは
+    // 固定のまま、フッターはスクロールの一番下に出るようにする。content の
+    // 閉じ </div> は末尾でまとめて閉じる。
 
     // バージョン表示: コミットハッシュは GitHub のコミットページへリンク
     const commit = __GIT_COMMIT__;
@@ -451,6 +453,7 @@ export class SettingsPanel {
         <span class="settings-security-desc">プレビューはこのページと同一オリジンで実行されます。他人の・出所不明なスケッチを実行すると、そのコードが保存済みの GitHub / OpenProcessing トークンを読み取り外部へ送信できてしまいます。信頼できるコードだけ実行し、共有 PC では使用後にトークンを削除してください。</span>
         <button class="settings-clear-tokens">保存したトークンを削除</button>
       </div>
+    </div>
     </div>`;
     return html;
   }
