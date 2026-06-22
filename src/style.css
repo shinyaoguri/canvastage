@@ -484,6 +484,28 @@ a.settings-commit:hover {
   font-size: 10px;
   line-height: 1.5;
 }
+.settings-clear-tokens {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 120, 120, 0.4);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 140, 140, 0.85);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.settings-clear-tokens:hover {
+  background: rgba(255, 120, 120, 0.12);
+  color: rgba(255, 160, 160, 1);
+}
+.settings-clear-tokens:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
 
 .settings-group {
   padding: 8px 20px 16px;

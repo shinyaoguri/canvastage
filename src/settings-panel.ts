@@ -5,6 +5,8 @@ import {
   saveSettings,
   applySettings,
 } from "./settings";
+import { clearToken as clearGithubToken } from "./github-auth";
+import { clearToken as clearOpenProcessingToken } from "./openprocessing-auth";
 
 interface SettingDef {
   key: keyof EditorSettings;
@@ -330,6 +332,8 @@ export class SettingsPanel {
   private settings: EditorSettings;
   private isOpen = false;
   private onChange: SettingsChangeCallback | null = null;
+  // トークン削除後に接続ドット等を更新させるためのコールバック。
+  private onTokensCleared: (() => void) | null = null;
 
   private constructor(container: HTMLElement, settings: EditorSettings) {
     this.settings = settings;
@@ -352,6 +356,10 @@ export class SettingsPanel {
 
   setOnChange(callback: SettingsChangeCallback): void {
     this.onChange = callback;
+  }
+
+  setOnTokensCleared(callback: () => void): void {
+    this.onTokensCleared = callback;
   }
 
   getSettings(): EditorSettings {
@@ -441,6 +449,7 @@ export class SettingsPanel {
       <div class="settings-security-note">
         <span class="settings-security-title">⚠ 信頼できないコードは実行しないでください</span>
         <span class="settings-security-desc">プレビューはこのページと同一オリジンで実行されます。他人の・出所不明なスケッチを実行すると、そのコードが保存済みの GitHub / OpenProcessing トークンを読み取り外部へ送信できてしまいます。信頼できるコードだけ実行し、共有 PC では使用後にトークンを削除してください。</span>
+        <button class="settings-clear-tokens">保存したトークンを削除</button>
       </div>
     </div>`;
     return html;
@@ -544,6 +553,25 @@ export class SettingsPanel {
         this.notifyChange();
         this.panel.innerHTML = this.buildHTML();
         this.bindEvents();
+      });
+
+    // 保存したトークンを削除（GitHub / OpenProcessing）
+    this.panel
+      .querySelector(".settings-clear-tokens")
+      ?.addEventListener("click", (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        btn.disabled = true;
+        void Promise.all([clearGithubToken(), clearOpenProcessingToken()]).then(
+          () => {
+            btn.textContent = "削除しました ✓";
+            // 接続ドット等を実態に同期させる
+            this.onTokensCleared?.();
+            setTimeout(() => {
+              btn.textContent = "保存したトークンを削除";
+              btn.disabled = false;
+            }, 2000);
+          }
+        );
       });
 
     // 閉じる
