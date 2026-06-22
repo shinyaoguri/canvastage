@@ -126,24 +126,6 @@ test.describe("settings reflect into the editor (production build)", () => {
     expect(await computed(page, sel, "left")).not.toBe(before);
   });
 
-  test("minimap toggle shows the minimap", async ({ page }) => {
-    await openSettings(page);
-    const widthOf = () =>
-      page.evaluate(() => {
-        const el = document.querySelector(".monaco-editor .minimap");
-        return el ? el.getBoundingClientRect().width : -1;
-      });
-    expect(await widthOf()).toBe(0);
-    await page.evaluate(() => {
-      const el = document.querySelector<HTMLInputElement>(
-        '#settings-panel input[type=checkbox][data-key="minimap"]'
-      );
-      el!.checked = true;
-      el!.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    await expect.poll(widthOf, { timeout: 4000 }).toBeGreaterThan(0);
-  });
-
   test("theme change recolors tokens", async ({ page }) => {
     await openSettings(page);
     const sel = ".monaco-editor .view-line";

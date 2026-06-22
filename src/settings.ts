@@ -50,7 +50,6 @@ export const EditorSettingsSchema = z.object({
     .enum(["none", "boundary", "selection", "trailing", "all"])
     .default("none"),
   wordWrap: z.enum(["on", "off", "wordWrapColumn", "bounded"]).default("on"),
-  minimap: z.boolean().default(false),
   smoothScrolling: z.boolean().default(true),
   cursorBlinking: z
     .enum(["blink", "smooth", "phase", "expand", "solid"])
