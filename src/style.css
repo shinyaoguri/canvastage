@@ -338,7 +338,11 @@ body > .monaco-editor {
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 200;
   transition: right 0.25s ease;
-  overflow-y: auto;
+  /* ヘッダ/フッターを固定し、設定項目だけをスクロールさせるため、パネル自体は
+     overflow:hidden の flex 縦並びにする（samples パネルと同じ方式）。 */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   /* 設定パネル自体はフォント設定の影響を受けない固定 UI フォント。
      フォント選択肢のプレビュー（各オプションの font-family インライン指定）は
      個別に上書きされるため、引き続き各フォントで表示される。 */
@@ -357,6 +361,8 @@ body > .monaco-editor {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.8);
+  /* スクロールしても固定 */
+  flex-shrink: 0;
 }
 
 .settings-close {
@@ -379,11 +385,17 @@ body > .monaco-editor {
 
 .settings-content {
   padding: 12px 0;
+  /* ヘッダ/フッターの間でこの領域だけがスクロールする */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .settings-footer {
   padding: 16px 20px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  /* 下部に固定 */
+  flex-shrink: 0;
 }
 
 .settings-footer .settings-reset {
@@ -428,9 +440,11 @@ body > .monaco-editor {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 0 20px 20px;
   text-align: center;
+  /* 下部に固定 */
+  flex-shrink: 0;
 }
 
 .settings-version {
@@ -451,9 +465,24 @@ a.settings-commit:hover {
 }
 
 .settings-security-note {
-  color: rgba(255, 200, 120, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 179, 71, 0.25);
+  border-radius: 6px;
+  background: rgba(255, 179, 71, 0.06);
+  text-align: left;
+}
+.settings-security-title {
+  color: rgba(255, 200, 120, 0.85);
+  font-size: 11px;
+  font-weight: 700;
+}
+.settings-security-desc {
+  color: rgba(255, 255, 255, 0.5);
   font-size: 10px;
-  cursor: help;
+  line-height: 1.5;
 }
 
 .settings-group {

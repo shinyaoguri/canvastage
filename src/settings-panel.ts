@@ -438,7 +438,10 @@ export class SettingsPanel {
     </div>
     <div class="settings-meta">
       <span class="settings-version">v${__APP_VERSION__} · ${commitHtml}</span>
-      <span class="settings-security-note" title="プレビューはこのページと同一オリジンで実行されます。信頼できないスケッチコードを実行すると、保存された GitHub トークン等にアクセスされる恐れがあります。">⚠ 信頼できないコードは実行しないでください</span>
+      <div class="settings-security-note">
+        <span class="settings-security-title">⚠ 信頼できないコードは実行しないでください</span>
+        <span class="settings-security-desc">プレビューはこのページと同一オリジンで実行されます。他人の・出所不明なスケッチを実行すると、そのコードが保存済みの GitHub / OpenProcessing トークンを読み取り外部へ送信できてしまいます。信頼できるコードだけ実行し、共有 PC では使用後にトークンを削除してください。</span>
+      </div>
     </div>`;
     return html;
   }
