@@ -220,6 +220,12 @@ async function init() {
     editor.applySettings(settings);
   });
 
+  // 設定パネルでトークンを削除したら、両ボタンの接続ドットを消灯させる
+  settingsPanel.setOnTokensCleared(() => {
+    void shareButton.refreshAuth();
+    void openProcessingButton.refreshAuth();
+  });
+
   // サンプル選択時にファイルを読み込み
   samplesPanel.setOnSelect((sampleFiles) => {
     files.html = sampleFiles.html;
