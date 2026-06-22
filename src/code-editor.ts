@@ -57,6 +57,9 @@ function createTheme(
       "editor.foreground": `#${palette.foreground ?? "F8F8F2"}`,
       "editor.lineHighlightBackground": palette.lineHighlight ?? "#ffffff08",
       "editor.lineHighlightBorder": "#00000000",
+      // インデントガイドを視認できる程度の明るさに（既定は薄すぎて見えない）。
+      "editorIndentGuide.background1": "#ffffff20",
+      "editorIndentGuide.activeBackground1": "#ffffff45",
     },
   };
 }
@@ -150,6 +153,8 @@ const DEFAULT_THEME: monaco.editor.IStandaloneThemeData = {
     "editor.background": "#00000000",
     "editor.lineHighlightBackground": "#ffffff08",
     "editor.lineHighlightBorder": "#00000000",
+    "editorIndentGuide.background1": "#ffffff20",
+    "editorIndentGuide.activeBackground1": "#ffffff45",
   },
 };
 
@@ -226,7 +231,10 @@ export function createEditor(
     overviewRulerLanes: 0,
     hideCursorInOverviewRuler: true,
     overviewRulerBorder: false,
-    matchBrackets: initialSettings?.bracketMatching ? "always" : "never",
+    // Monaco 標準のブラケットマッチ装飾はこの standalone 構成では描画されない
+    // （matchBracket での検出は機能するのに装飾が出ない）。そのため下の自前実装で
+    // 代替する。標準側は常に無効化して二重描画を避ける。
+    matchBrackets: "never",
     scrollbar: {
       vertical: "hidden",
       horizontal: "hidden",
@@ -236,6 +244,40 @@ export function createEditor(
 
   // Ctrl+Enter で実行
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
+
+  // --- 自前のブラケットマッチ ---
+  // model.bracketPairs.matchBracket() は正しくペアを返すので、カーソル位置で
+  // 検出して両ブラケットに装飾を付ける。bracketMatching 設定で ON/OFF する。
+  // ITextModel の型には bracketPairs が露出していないが実行時には存在する。
+  interface BracketPairsPart {
+    matchBracket(position: monaco.IPosition): monaco.Range[] | null;
+  }
+  let bracketMatchEnabled = initialSettings?.bracketMatching ?? false;
+  const bracketDecorations = editor.createDecorationsCollection();
+  const updateBracketMatch = () => {
+    const model = editor.getModel();
+    const pos = editor.getPosition();
+    if (!bracketMatchEnabled || !model || !pos) {
+      bracketDecorations.clear();
+      return;
+    }
+    const bracketPairs = (
+      model as unknown as { bracketPairs: BracketPairsPart }
+    ).bracketPairs;
+    const match = bracketPairs.matchBracket(pos);
+    if (!match) {
+      bracketDecorations.clear();
+      return;
+    }
+    bracketDecorations.set(
+      match.map((range) => ({
+        range,
+        options: { className: "cv-bracket-match" },
+      }))
+    );
+  };
+  editor.onDidChangeCursorPosition(updateBracketMatch);
+  editor.onDidChangeModelContent(updateBracketMatch);
 
   return {
     getValue: () => editor.getValue(),
@@ -277,8 +319,11 @@ export function createEditor(
         bracketPairColorization: {
           enabled: settings.bracketPairGuides,
         },
-        matchBrackets: settings.bracketMatching ? "always" : "never",
       });
+
+      // 自前のブラケットマッチを設定に合わせて更新
+      bracketMatchEnabled = settings.bracketMatching;
+      updateBracketMatch();
     },
     onDidChange: (callback: () => void) => {
       editor.onDidChangeModelContent(callback);
