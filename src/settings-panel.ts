@@ -252,7 +252,6 @@ const SETTING_GROUPS: { title: string; settings: SettingDef[] }[] = [
       { key: "indentGuides", label: "Indent Guides", type: "checkbox" },
       { key: "bracketPairGuides", label: "Bracket Guides", type: "checkbox" },
       { key: "bracketMatching", label: "Bracket Match", type: "checkbox" },
-      { key: "minimap", label: "Minimap", type: "checkbox" },
       { key: "smoothScrolling", label: "Smooth Scroll", type: "checkbox" },
       { key: "stickyScroll", label: "Sticky Scroll", type: "checkbox" },
     ],

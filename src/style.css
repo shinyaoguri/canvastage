@@ -133,20 +133,20 @@ body > .monaco-editor {
   border: none !important;
 }
 
-/* ブラケットペアガイド・インデントガイドを非表示 */
-.monaco-editor .bracket-pair-guide,
-.monaco-editor .vertical-guide,
-.monaco-editor .bracket-indent-guide,
-.monaco-editor .lines-content .cigr,
-.monaco-editor .lines-content .cigra {
-  display: none !important;
-  opacity: 0 !important;
-}
+/* 注: 以前はインデント/ブラケットガイドとブラケットマッチを CSS で
+   無条件に非表示にしていたが、これらは設定（Editor Features）で ON/OFF
+   できる項目になった。CSS で強制的に消すと設定が効かなくなるため、表示は
+   Monaco のオプション（guides.*）と自前のブラケットマッチに委ねる。
+   旧コードが消そうとしていた .cigr / .vertical-guide / .bracket-pair-guide
+   等は現行 Monaco には存在しないクラスで、実際のガイド（.core-guide）には
+   効いていなかった。 */
 
-/* アクティブブラケットハイライトを非表示 */
-.monaco-editor .bracket-match {
-  background: transparent !important;
-  border: none !important;
+/* 自前のブラケットマッチ装飾（Monaco 標準が standalone で描画しないための代替）。
+   code-editor.ts が cursor 位置のブラケット対にこのクラスを付ける。 */
+.monaco-editor .cv-bracket-match {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+  box-sizing: border-box;
 }
 
 /* 青いラインの可能性がある要素を無効化 */
