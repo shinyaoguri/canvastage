@@ -2,7 +2,7 @@ import type { Files } from "./preview";
 import { deploySketch, whoami, OpenProcessingError } from "./openprocessing";
 import { getStoredToken, clearToken } from "./openprocessing-auth";
 import { OpenProcessingModal } from "./openprocessing-modal";
-import { showToast } from "./share";
+import { showToast } from "./toast";
 
 type State = "idle" | "deploying";
 

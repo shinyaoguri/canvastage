@@ -10,7 +10,12 @@ export class ConsolePanel {
   private container: HTMLElement;
   private messagesEl: HTMLElement;
 
-  constructor(parent: HTMLElement) {
+  // isExpectedSource: console メッセージの送信元がプレビュー iframe かを判定する。
+  // 渡された場合のみ検証し、他ウィンドウからのコンソール詐称メッセージを弾く。
+  constructor(
+    parent: HTMLElement,
+    isExpectedSource?: (source: MessageEventSource | null) => boolean
+  ) {
     this.container = document.createElement("div");
     this.container.id = "console-panel";
     this.container.className = "hidden";
@@ -21,6 +26,7 @@ export class ConsolePanel {
 
     // iframeからのコンソールメッセージをリッスン
     window.addEventListener("message", (e) => {
+      if (isExpectedSource && !isExpectedSource(e.source)) return;
       if (e.data && e.data.type === "console") {
         this.addMessage({
           level: e.data.level,

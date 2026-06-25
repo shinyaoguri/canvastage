@@ -1,6 +1,6 @@
 import type { Files } from "./preview";
 import { parseGistId, fetchGist, GistError } from "./gist";
-import { showToast } from "./share";
+import { showToast } from "./toast";
 
 export type GistImportHandler = (files: Files, projectName: string) => void;
 

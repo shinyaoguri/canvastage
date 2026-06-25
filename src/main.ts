@@ -228,8 +228,11 @@ async function init() {
   // プレビュー
   const preview = new Preview(app);
 
-  // コンソールパネル
-  const consolePanel = new ConsolePanel(app);
+  // コンソールパネル（メッセージはプレビュー iframe からのもののみ受け付ける）
+  const consolePanel = new ConsolePanel(
+    app,
+    (source) => source === preview.getContentWindow()
+  );
 
   // 実行関数
   const runCode = () => {

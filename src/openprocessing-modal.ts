@@ -1,7 +1,7 @@
 import type { Files } from "./preview";
 import { whoami, OpenProcessingError } from "./openprocessing";
 import { getStoredToken, storeToken, clearToken } from "./openprocessing-auth";
-import { showToast } from "./share";
+import { showToast } from "./toast";
 
 const TOKEN_PAGE = "https://openprocessing.org/user/#edit";
 const CREATE_PAGE = "https://openprocessing.org/sketch/create";
