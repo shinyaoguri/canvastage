@@ -18,16 +18,39 @@ const LANGUAGES: Record<FileType, string> = {
   js: "javascript",
 };
 
+// 共通のツールバーボタン（円形アイコンボタン）を組み立てる。
+function makeToolbarButton(opts: {
+  id: string;
+  svg: string;
+  title?: string;
+  onClick?: () => void;
+}): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.id = opts.id;
+  btn.className = "toolbar-btn";
+  if (opts.title) btn.title = opts.title;
+  btn.innerHTML = opts.svg;
+  if (opts.onClick) btn.onclick = opts.onClick;
+  return btn;
+}
+
 async function init() {
   const app = document.getElementById("app")!;
 
-  // 設定を読み込んで適用
-  applySettings(await loadSettings());
+  // 設定を読み込んで適用（SettingsPanel にも渡して IndexedDB の二重読みを避ける）
+  const initialSettings = await loadSettings();
+  applySettings(initialSettings);
 
   // ファイル内容を管理（basicsからランダムに初期サンプルを選択）
   const initialFiles = getRandomBasicsSample() ?? { ...DEFAULT_FILES };
   const files: Files = initialFiles;
   let currentFile: FileType = "js";
+
+  // 現在のエディタ内容を files に取り込み、その files を返す（共有スナップショット）。
+  const snapshot = (): Files => {
+    files[currentFile] = editor.getValue();
+    return files;
+  };
 
   // タブ
   const tabs = document.createElement("div");
@@ -53,79 +76,72 @@ async function init() {
   app.appendChild(tabs);
 
   // 設定パネル
-  const settingsPanel = await SettingsPanel.create(app);
-  const initialSettings = settingsPanel.getSettings();
+  const settingsPanel = await SettingsPanel.create(app, initialSettings);
 
   // サンプルパネル
   const samplesPanel = new SamplesPanel(app);
 
   // サンプルボタン
-  const samplesBtn = document.createElement("button");
-  samplesBtn.id = "samples-btn";
-  samplesBtn.className = "toolbar-btn";
-  samplesBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  const samplesBtn = makeToolbarButton({
+    id: "samples-btn",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
     <line x1="8" y1="7" x2="16" y2="7"/>
     <line x1="8" y1="11" x2="14" y2="11"/>
-  </svg>`;
-  samplesBtn.onclick = () => samplesPanel.toggle();
+  </svg>`,
+    onClick: () => samplesPanel.toggle(),
+  });
   app.appendChild(samplesBtn);
 
   // 設定ボタン
-  const settingsBtn = document.createElement("button");
-  settingsBtn.id = "settings-btn";
-  settingsBtn.className = "toolbar-btn";
-  settingsBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  const settingsBtn = makeToolbarButton({
+    id: "settings-btn",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="3"/>
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-  </svg>`;
-  settingsBtn.onclick = () => settingsPanel.toggle();
+  </svg>`,
+    onClick: () => settingsPanel.toggle(),
+  });
   app.appendChild(settingsBtn);
 
   // フルスクリーンボタン
-  const fullscreenBtn = document.createElement("button");
-  fullscreenBtn.id = "fullscreen-btn";
-  fullscreenBtn.className = "toolbar-btn";
-  fullscreenBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  const fullscreenBtn = makeToolbarButton({
+    id: "fullscreen-btn",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-  </svg>`;
-  fullscreenBtn.onclick = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      document.documentElement.requestFullscreen();
-    }
-  };
+  </svg>`,
+    onClick: () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    },
+  });
   app.appendChild(fullscreenBtn);
 
   // シェアボタン
-  const shareButton = new ShareButton(app, () => {
-    files[currentFile] = editor.getValue();
-    return { ...files };
-  });
+  const shareButton = new ShareButton(app, () => ({ ...snapshot() }));
 
   // OpenProcessing デプロイボタン（GitHub とは独立）
   const openProcessingButton = new OpenProcessingButton(
     app,
-    () => {
-      files[currentFile] = editor.getValue();
-      return { ...files };
-    },
+    () => ({ ...snapshot() }),
     () => shareButton.getProjectName()
   );
 
   // 新規プロジェクトボタン
-  const newProjectBtn = document.createElement("button");
-  newProjectBtn.id = "new-project-btn";
-  newProjectBtn.className = "toolbar-btn";
-  newProjectBtn.title = "New Project";
-  newProjectBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  const newProjectBtn = makeToolbarButton({
+    id: "new-project-btn",
+    title: "New Project",
+    svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
     <polyline points="14 2 14 8 20 8"/>
     <line x1="12" y1="18" x2="12" y2="12"/>
     <line x1="9" y1="15" x2="15" y2="15"/>
-  </svg>`;
+  </svg>`,
+  });
   app.appendChild(newProjectBtn);
 
   // プロジェクト名エリア（再生ボタン + プロジェクト名）
@@ -134,13 +150,13 @@ async function init() {
 
   // 再生/停止ボタン
   let isRunning = false;
-  const runStopBtn = document.createElement("button");
-  runStopBtn.id = "run-stop-btn";
-  runStopBtn.className = "toolbar-btn";
-  runStopBtn.title = "Run (⌘+Enter)";
   const playIcon = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6,3 20,12 6,21"/></svg>`;
   const stopIcon = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>`;
-  runStopBtn.innerHTML = playIcon;
+  const runStopBtn = makeToolbarButton({
+    id: "run-stop-btn",
+    title: "Run (⌘+Enter)",
+    svg: playIcon,
+  });
   projectBar.appendChild(runStopBtn);
 
   const projectNameInput = document.createElement("input");
@@ -175,7 +191,7 @@ async function init() {
 
   // 実行関数
   const runCode = () => {
-    files[currentFile] = editor.getValue();
+    snapshot();
     consolePanel.clear();
     preview.run(files);
     isRunning = true;
@@ -243,7 +259,7 @@ async function init() {
     if (type === currentFile) return;
 
     // 現在のファイル内容を保存
-    files[currentFile] = editor.getValue();
+    snapshot();
 
     // タブのアクティブ状態を更新
     tabButtons[currentFile].className = "";

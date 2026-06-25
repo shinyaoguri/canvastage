@@ -115,6 +115,15 @@ export async function saveSettings(settings: EditorSettings): Promise<void> {
   }
 }
 
+// `#rrggbb` と不透明度から rgba 文字列を組み立てる。
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function applySettings(settings: EditorSettings): void {
   const root = document.documentElement;
 
@@ -148,14 +157,9 @@ export function applySettings(settings: EditorSettings): void {
   );
   root.style.setProperty("--editor-cursor-width", `${settings.cursorWidth}px`);
   root.style.setProperty("--editor-cursor-color", settings.cursorColor);
-  // カーソル色のrgba計算
-  const cursorHex = settings.cursorColor.replace("#", "");
-  const cr = parseInt(cursorHex.substring(0, 2), 16);
-  const cg = parseInt(cursorHex.substring(2, 4), 16);
-  const cb = parseInt(cursorHex.substring(4, 6), 16);
   root.style.setProperty(
     "--editor-cursor-bg",
-    `rgba(${cr}, ${cg}, ${cb}, ${settings.cursorOpacity})`
+    hexToRgba(settings.cursorColor, settings.cursorOpacity)
   );
 
   root.style.setProperty(
@@ -171,14 +175,9 @@ export function applySettings(settings: EditorSettings): void {
     "--editor-current-line-color",
     settings.currentLineColor
   );
-  // 色とopacityからrgbaを計算
-  const hex = settings.currentLineColor.replace("#", "");
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
   root.style.setProperty(
     "--editor-current-line-bg",
-    `rgba(${r}, ${g}, ${b}, ${settings.currentLineOpacity})`
+    hexToRgba(settings.currentLineColor, settings.currentLineOpacity)
   );
 
   root.style.setProperty(
