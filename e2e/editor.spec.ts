@@ -110,4 +110,28 @@ test.describe("editor tabs & run controls", () => {
 
     await expect(btn).not.toHaveClass(/stale/);
   });
+
+  test("stale dot does not shift the run button position", async ({ page }) => {
+    await openApp(page);
+
+    const centerY = (sel: string) =>
+      page.locator(sel).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return r.top + r.height / 2;
+      });
+
+    // 再生ボタンとプロジェクト名入力の縦中心が揃っている
+    // （relative 化で .toolbar-btn の top:0.5rem が効く 8px ずれが無いこと）。
+    const btnY = await centerY("#run-stop-btn");
+    const inputY = await centerY("#project-name");
+    expect(Math.abs(btnY - inputY)).toBeLessThan(2);
+
+    // 差分ドット（::after は絶対配置）を出してもボタンの縦位置は変わらない。
+    // タイプ由来のレイアウト変化を避けるため stale クラスを直接付与して検証する。
+    await page
+      .locator("#run-stop-btn")
+      .evaluate((el) => el.classList.add("stale"));
+    await expect(page.locator("#run-stop-btn")).toHaveClass(/stale/);
+    expect(Math.abs((await centerY("#run-stop-btn")) - btnY)).toBeLessThan(0.5);
+  });
 });
