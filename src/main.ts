@@ -183,12 +183,19 @@ async function init() {
 
   // 再生/停止ボタン
   let isRunning = false;
+  // 最後の実行以降にコードが編集されたか（実行中の表示が古いことを示す）。
+  let staleSinceRun = false;
   const runStopBtn = makeToolbarButton({
     id: "run-stop-btn",
     title: "Run (⌘+Enter)",
     svg: ICONS.play,
   });
   projectBar.appendChild(runStopBtn);
+
+  // 実行中かつ未実行の変更がある時だけ、再生ボタンにさりげない差分ドットを出す。
+  const updateRunStale = () => {
+    runStopBtn.classList.toggle("stale", isRunning && staleSinceRun);
+  };
 
   const projectNameInput = document.createElement("input");
   projectNameInput.id = "project-name";
@@ -226,8 +233,11 @@ async function init() {
     consolePanel.clear();
     preview.run(files);
     isRunning = true;
+    // 今のコードを実行したので、未実行の変更は無くなった。
+    staleSinceRun = false;
     runStopBtn.innerHTML = ICONS.stop;
     runStopBtn.title = "Stop";
+    updateRunStale();
     // Gist 作成済みなら、実行のたびに（変更があれば）自動更新する
     shareButton.scheduleAutoSave();
   };
@@ -237,6 +247,8 @@ async function init() {
     isRunning = false;
     runStopBtn.innerHTML = ICONS.play;
     runStopBtn.title = "Run (⌘+Enter)";
+    // 停止中は「実行中の表示が古い」概念が無いのでドットを消す。
+    updateRunStale();
   };
 
   runStopBtn.onclick = () => {
@@ -256,10 +268,13 @@ async function init() {
     initialSettings
   );
 
-  // エディタ変更時にシェアボタン / OpenProcessing ボタンの状態を更新
+  // エディタ変更時にシェアボタン / OpenProcessing ボタンの状態を更新し、
+  // 実行中なら「未実行の変更あり」をさりげなく示す。
   editor.onDidChange(() => {
     shareButton.markDirty();
     openProcessingButton.markDirty();
+    staleSinceRun = true;
+    updateRunStale();
   });
 
   // 設定変更時にエディタへ反映

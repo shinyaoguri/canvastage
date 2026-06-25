@@ -729,7 +729,7 @@ a.settings-commit:hover {
 }
 
 #run-stop-btn {
-  position: static;
+  position: relative;
   width: 24px;
   height: 24px;
   flex-shrink: 0;
@@ -738,6 +738,19 @@ a.settings-commit:hover {
 #run-stop-btn svg {
   width: 12px;
   height: 12px;
+}
+
+/* 実行中に未実行の変更があると点くさりげない差分ドット
+   （OP/share の dirty ドットと同じ作法）。 */
+#run-stop-btn.stale::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(120, 180, 255, 0.9);
 }
 
 /* プロジェクト名 */

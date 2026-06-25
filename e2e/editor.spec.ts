@@ -77,4 +77,37 @@ test.describe("editor tabs & run controls", () => {
     await expect(btn).toHaveAttribute("title", "Stop");
     expect(await editorText(page)).toBe(before);
   });
+
+  test("editing after a run marks the run button as stale, re-run clears it", async ({
+    page,
+  }) => {
+    await openApp(page);
+
+    // 起動直後は初回実行済みでズレ無し
+    const btn = page.locator("#run-stop-btn");
+    await expect(btn).not.toHaveClass(/stale/);
+
+    // コードを編集すると「未実行の変更あり」表示が点く
+    await page.click(".monaco-editor .view-lines");
+    await page.keyboard.type("// edit");
+    await expect(btn).toHaveClass(/stale/);
+
+    // 再実行で消える
+    await page.keyboard.press("Control+Enter");
+    await expect(btn).not.toHaveClass(/stale/);
+  });
+
+  test("switching tabs does not mark the run as stale", async ({ page }) => {
+    await openApp(page);
+
+    // setValue 由来の flush は実編集ではないため stale にならない（isFlush 判定）。
+    const btn = page.locator("#run-stop-btn");
+    await expect(btn).not.toHaveClass(/stale/);
+
+    await tab(page, "index.html").click();
+    await tab(page, "style.css").click();
+    await tab(page, "sketch.js").click();
+
+    await expect(btn).not.toHaveClass(/stale/);
+  });
 });
