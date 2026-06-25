@@ -8,6 +8,14 @@ on:
     branches:
       - main
 
+# 本番デプロイ(main)は途中キャンセルしない。プレビュー(PR)は最新だけ残す。
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# 既定トークンは付与しない（必要権限は deploy ジョブで明示）。
+permissions: {}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -40,7 +48,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.head_ref || github.ref_name }}
+          command: pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.ref_name }}
 
       - name: Deploy to Cloudflare Pages (Preview)
         if: github.event_name == 'pull_request'

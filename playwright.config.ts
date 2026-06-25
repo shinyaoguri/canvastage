@@ -12,7 +12,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: process.env.CI ? "list" : [["list"], ["html", { open: "never" }]],
+  // list に加え HTML レポートを常時生成（CI では失敗時にアーティファクト回収する）。
+  reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",

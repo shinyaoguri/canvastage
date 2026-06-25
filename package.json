@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
+    "typecheck:functions": "tsc -p tsconfig.functions.json",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
@@ -20,10 +21,14 @@
     "monaco-editor": "^0.55.1",
     "zod": "^4.4.3"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "overrides": {
     "dompurify": "^3.4.11"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260625.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.0",
     "@types/p5": "^1.7.7",

@@ -8,9 +8,18 @@ on:
     branches:
       - main
 
+# 同一ブランチで連続 push したとき、古い実行をキャンセルして無駄を省く。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# 既定トークンは読み取りのみに絞る（最小権限）。
+permissions:
+  contents: read
+
 jobs:
-  ci:
-    name: ci
+  build:
+    name: lint / typecheck / build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,5 +40,40 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Typecheck Pages Functions
+        run: npm run typecheck:functions
+
       - name: Build (typecheck + bundle)
         run: npm run build
+
+  e2e:
+    name: e2e (settings regression)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # webServer が build → preview を行うため、ここでの明示ビルドは不要。
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
