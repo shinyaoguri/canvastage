@@ -95,11 +95,15 @@ that look wrong but are deliberate:
 - `npm run build` — `tsc && vite build`
 - `npm run preview` — preview the production build
 - `npm run lint` / `npm run format` — ESLint / Prettier
+- `npm run typecheck:functions` — typecheck the Cloudflare Pages Functions under
+  `functions/` (uses `tsconfig.functions.json` + `@cloudflare/workers-types`).
+  The app's own `tsconfig.json` only covers `src/`, so the OAuth callback needs
+  this separate pass.
 - `npm run test:e2e` — Playwright E2E (settings regression). Runs against the
   **production build** (`build` → `preview`), because the settings-opacity bug
   it guards only appeared after CSS minification — a dev-server test would have
   missed it. Tests live in `e2e/`. First run needs `npx playwright install
-  chromium`. Not wired into CI yet (local/dev only).
+  chromium`. Runs in CI as a required check (the `e2e` job in `ci.yml`).
 
 ## Conventions
 
@@ -107,6 +111,10 @@ that look wrong but are deliberate:
   surrounding language when editing a file.
 - `__APP_VERSION__` / `__GIT_COMMIT__` are injected at build time by
   `vite.config.ts` (`define`) and shown in the settings footer.
+- The `overrides.dompurify` pin in `package.json` is deliberate: DOMPurify is a
+  transitive dependency of `monaco-editor` (which locks an older 3.2.x), and the
+  override force-upgrades it to a 3.4.x line that fixes known mXSS advisories.
+  It is not used directly in app code — don't "remove the unused dependency".
 
 ## Commits & PRs — authorship
 

@@ -1,0 +1,9 @@
+# Cloudflare Pages のセキュリティヘッダ。
+# 注意: ここに Content-Security-Policy や Permissions-Policy は意図的に置かない。
+# プレビュー iframe は same-origin で任意コードを実行し、CDN(<script>) と
+# getUserMedia(webcam/ML)・Web Audio に依存するため、それらを制限すると
+# サンプルが壊れる（src/preview.ts の設計判断を参照）。回帰ゼロの基本ヘッダのみ。
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
