@@ -1,4 +1,4 @@
-import { Files } from "./preview";
+import type { Files } from "./preview";
 import { DEFAULT_HTML, DEFAULT_CSS } from "./defaults";
 
 export interface Sample {

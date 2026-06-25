@@ -1,4 +1,4 @@
-import { Files } from "./preview";
+import type { Files } from "./preview";
 
 export const DEFAULT_HTML = `<!DOCTYPE html>
 <html lang="en">

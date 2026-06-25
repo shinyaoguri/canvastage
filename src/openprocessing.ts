@@ -26,15 +26,10 @@ export interface SketchRef {
 }
 
 export interface WhoAmI {
-  userID?: number;
   username?: string;
-  membershipType?: number;
   // write 権限の有無（スケッチ/コードの作成・更新ができるか）。Plus+ 会員が
   // write 付きで発行したトークンのみ true。実トークンで確認済みのフラグ名。
   canWrite: boolean;
-  // 非公開データ（自分の private スケッチ）にアクセスできるか。
-  canPrivate: boolean;
-  raw: unknown;
 }
 
 export interface SketchMeta {
@@ -141,12 +136,8 @@ export async function whoami(token: string): Promise<WhoAmI> {
   > | null;
   const flags = (data ?? {}) as Record<string, unknown>;
   return {
-    userID: flags.userID as number | undefined,
     username: flags.username as string | undefined,
-    membershipType: flags.membershipType as number | undefined,
     canWrite: Boolean(flags.tokenWriteAccess),
-    canPrivate: Boolean(flags.tokenPrivateAccess),
-    raw: data,
   };
 }
 

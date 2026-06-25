@@ -174,7 +174,6 @@ export interface Editor {
   getValue(): string;
   setValue(value: string): void;
   setLanguage(language: string): void;
-  setTheme(theme: string): void;
   applySettings(settings: EditorSettings): void;
   onDidChange(callback: () => void): void;
 }
@@ -284,9 +283,6 @@ export function createEditor(
     setValue: (value: string) => editor.setValue(value),
     setLanguage: (language: string) => {
       monaco.editor.setModelLanguage(editor.getModel()!, language);
-    },
-    setTheme: (theme: string) => {
-      monaco.editor.setTheme(theme);
     },
     applySettings: (settings: EditorSettings) => {
       monaco.editor.setTheme(settings.editorTheme);
