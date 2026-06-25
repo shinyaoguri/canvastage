@@ -9,7 +9,6 @@ const MAX_MESSAGES = 100;
 export class ConsolePanel {
   private container: HTMLElement;
   private messagesEl: HTMLElement;
-  private messages: ConsoleMessage[] = [];
 
   constructor(parent: HTMLElement) {
     this.container = document.createElement("div");
@@ -33,10 +32,6 @@ export class ConsolePanel {
   }
 
   addMessage(msg: ConsoleMessage): void {
-    this.messages.push(msg);
-    if (this.messages.length > MAX_MESSAGES) {
-      this.messages.shift();
-    }
     this.container.classList.remove("hidden");
     this.renderMessage(msg);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
@@ -55,7 +50,6 @@ export class ConsolePanel {
   }
 
   clear(): void {
-    this.messages = [];
     this.messagesEl.innerHTML = "";
     this.container.classList.add("hidden");
   }

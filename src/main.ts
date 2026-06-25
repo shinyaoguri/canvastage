@@ -1,10 +1,10 @@
 import "./style.css";
 import { createEditor } from "./code-editor";
-import { Preview, Files } from "./preview";
+import { Preview, type Files } from "./preview";
 import { SettingsPanel } from "./settings-panel";
 import { SamplesPanel } from "./samples-panel";
 import { ConsolePanel } from "./console-panel";
-import { loadSettings, applySettings, EditorSettings } from "./settings";
+import { loadSettings, applySettings, type EditorSettings } from "./settings";
 import { DEFAULT_FILES } from "./defaults";
 import { getRandomBasicsSample } from "./samples";
 import { ShareButton } from "./share";
@@ -259,4 +259,6 @@ async function init() {
   runCode();
 }
 
-init();
+init().catch((e) => {
+  console.error("初期化に失敗しました", e);
+});

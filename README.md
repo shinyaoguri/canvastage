@@ -7,13 +7,13 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **Transparent overlay editor** — Monaco Editor sits on top of the live preview, so your code and artwork coexist
 - **Multi-file editing** — Switch between HTML, CSS, and JavaScript tabs
 - **Instant preview** — Press `Ctrl+Enter` to run your sketch immediately
-- **40+ editor settings** — Font, theme, opacity, cursor style, and more, persisted in IndexedDB
+- **29 editor settings** — Font, theme, opacity, cursor style, and more, persisted in IndexedDB
 - **8 editor themes** — transparent-dark, monokai, dracula, github-dark, nord, solarized, one-dark, cyberpunk
 - **Sample browser** — Explore categorized examples: basics, animation, generative, interaction, 3D, libraries, ML, experimental
 - **Console panel** — Captures `console.log` / `warn` / `error` from the preview iframe
 - **Full input forwarding** — Mouse, keyboard, and touch events pass through to the canvas
 - **Share to GitHub Gist** — Sign in with GitHub to publish/auto-update your sketch as a gist
-- **Deploy to OpenProcessing** — Plus+ members can publish straight to OpenProcessing via API; everyone else gets a guided manual-upload flow
+- **Deploy to OpenProcessing** — Plus+ members can publish straight to OpenProcessing via API (sketches are created Private by default); everyone else gets a guided manual-upload flow
 
 ## Getting Started
 
@@ -60,7 +60,9 @@ The same applies to the **OpenProcessing API token**: it is stored only in your
 browser's IndexedDB and is sent directly to OpenProcessing (their API allows
 cross-origin requests, so no proxy is involved). A write-enabled token can
 create, update, and delete any of your sketches, so treat it like a password and
-clear it on shared machines. Direct API deploy requires an OpenProcessing
+clear it on shared machines. (Canvastage itself only creates and updates
+sketches — it never deletes — but the token's capability is broader.) Direct API
+deploy requires an OpenProcessing
 **Plus+** membership; free accounts use the in-app manual-upload guide instead.
 
 ## Deployment

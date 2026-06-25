@@ -1,5 +1,5 @@
-import { SAMPLE_CATEGORIES, SampleCategory } from "./samples";
-import { Files } from "./preview";
+import { SAMPLE_CATEGORIES, type SampleCategory } from "./samples";
+import type { Files } from "./preview";
 
 export type SampleSelectCallback = (files: Files) => void;
 
@@ -130,10 +130,5 @@ export class SamplesPanel {
   close(): void {
     this.isOpen = false;
     this.panel.classList.remove("open");
-  }
-
-  open(): void {
-    this.isOpen = true;
-    this.panel.classList.add("open");
   }
 }
