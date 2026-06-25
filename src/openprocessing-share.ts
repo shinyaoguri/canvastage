@@ -109,13 +109,15 @@ export class OpenProcessingButton {
       return;
     }
 
-    void this.deploy();
+    // 取得済みトークンを渡して deploy 側の再読み込みを省く。
+    void this.deploy(token);
   }
 
-  private async deploy(): Promise<void> {
+  // token 未指定時は保存済みトークンを読む（モーダルの onConnected 経路用）。
+  private async deploy(token?: string): Promise<void> {
     if (this.state !== "idle") return;
-    const token = await getStoredToken();
-    if (!token) {
+    const resolvedToken = token ?? (await getStoredToken());
+    if (!resolvedToken) {
       void this.modal.open();
       return;
     }
@@ -128,7 +130,7 @@ export class OpenProcessingButton {
     );
     try {
       const ref = await deploySketch(
-        token,
+        resolvedToken,
         this.getFiles(),
         { title: this.getProjectName(), isPrivate: true },
         this.sketchId,
