@@ -1,30 +1,10 @@
-import { createStore } from "./idb-store";
+import { makeTokenStore } from "./token-store";
 
 // GitHub OAuth App の client_id（publicな値なのでクライアントに埋め込みOK）
 const GITHUB_CLIENT_ID = "Ov23lidMoieTG2EHB1Jw";
 
-const TOKEN_KEY = "github-token";
-const store = createStore<{ token: string; createdAt: number }>(
-  "canvastage-auth",
-  "auth"
-);
-
-export async function getStoredToken(): Promise<string | null> {
-  try {
-    const record = await store.get(TOKEN_KEY);
-    return record?.token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export async function storeToken(token: string): Promise<void> {
-  await store.put(TOKEN_KEY, { token, createdAt: Date.now() });
-}
-
-export async function clearToken(): Promise<void> {
-  await store.delete(TOKEN_KEY);
-}
+export const { getStoredToken, storeToken, clearToken } =
+  makeTokenStore("github-token");
 
 export function initiateOAuth(): Promise<string> {
   return new Promise((resolve, reject) => {

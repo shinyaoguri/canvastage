@@ -345,12 +345,25 @@ export class SettingsPanel {
     // すべてのフォントを事前に読み込む
     preloadAllFonts();
 
+    // ドロップダウン外クリックで閉じる。bindEvents は Reset のたびに再実行される
+    // ため、document へのリスナーはここで一度だけ登録してリークを防ぐ（panel 要素
+    // は再描画されても同一インスタンスのまま）。
+    document.addEventListener("click", () => {
+      this.panel
+        .querySelectorAll(".custom-select.open")
+        .forEach((d) => d.classList.remove("open"));
+    });
+
     this.bindEvents();
   }
 
-  static async create(container: HTMLElement): Promise<SettingsPanel> {
-    const settings = await loadSettings();
-    return new SettingsPanel(container, settings);
+  static async create(
+    container: HTMLElement,
+    settings?: EditorSettings
+  ): Promise<SettingsPanel> {
+    // 起動時に main 側で読み済みの設定を渡せば IndexedDB の二重読みを避けられる。
+    const resolved = settings ?? (await loadSettings());
+    return new SettingsPanel(container, resolved);
   }
 
   setOnChange(callback: SettingsChangeCallback): void {
@@ -359,10 +372,6 @@ export class SettingsPanel {
 
   setOnTokensCleared(callback: () => void): void {
     this.onTokensCleared = callback;
-  }
-
-  getSettings(): EditorSettings {
-    return this.settings;
   }
 
   private notifyChange(): void {
@@ -538,13 +547,6 @@ export class SettingsPanel {
           dropdown.classList.remove("open");
         });
       });
-    });
-
-    // ドロップダウン外クリックで閉じる
-    document.addEventListener("click", () => {
-      this.panel
-        .querySelectorAll(".custom-select.open")
-        .forEach((d) => d.classList.remove("open"));
     });
 
     // リセット
