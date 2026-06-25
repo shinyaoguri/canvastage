@@ -58,6 +58,10 @@ export class OpenProcessingModal {
             <strong>書き込みには Plus+ 会員の write 権限トークンが必要です。</strong>
           </p>
           <p>
+            デプロイしたスケッチは <strong>非公開（Private）</strong> で作成されます。
+            一般公開したい場合は OpenProcessing 側のスケッチ設定で変更してください。
+          </p>
+          <p>
             <a href="${TOKEN_PAGE}" target="_blank" rel="noopener noreferrer">
               アカウント設定でトークンを発行 ↗
             </a>
