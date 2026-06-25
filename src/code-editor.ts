@@ -241,10 +241,16 @@ export function createEditor(
     contextmenu: false,
   });
 
-  // ⌘+Enter（mac）/ Ctrl+Enter（Windows/Linux）で実行。
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
-  // mac でも物理 Ctrl+Enter で実行できるようにする（WinCtrl = mac の Ctrl）。
-  editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.Enter, onRun);
+  // ⌘+Enter / Ctrl+Enter で実行。Monaco の CtrlCmd は mac で ⌘ にマップされ
+  // 物理 Ctrl を拾わないため、keydown のメタ/コントロール修飾を直接見て、全OSで
+  // ⌘・Ctrl どちらの Enter でも実行できるようにする（重複発火しない単一経路）。
+  editor.onKeyDown((e) => {
+    if (e.keyCode === monaco.KeyCode.Enter && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+      onRun();
+    }
+  });
 
   // --- 自前のブラケットマッチ ---
   // model.bracketPairs.matchBracket() は正しくペアを返すので、カーソル位置で
