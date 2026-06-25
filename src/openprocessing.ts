@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Files } from "./preview";
 
 // OpenProcessing Public API クライアント。
@@ -38,6 +39,18 @@ export interface SketchMeta {
   isPrivate?: boolean;
   license?: string;
 }
+
+// whoami / createSketch のレスポンスのうち本アプリが使う部分を検証する。
+// id 系は API が文字列で返すことがあるため数値に強制変換する。フラグは 1/0/true/false
+// など揺れがあるので boolean には固定しない（Boolean() 側で吸収）。
+const WhoAmISchema = z.looseObject({
+  username: z.string().optional(),
+});
+
+const SketchCreateSchema = z.looseObject({
+  visualID: z.coerce.number().optional(),
+  id: z.coerce.number().optional(),
+});
 
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
@@ -130,14 +143,17 @@ async function apiFetch(path: string, opts: ApiOptions): Promise<unknown> {
 }
 
 export async function whoami(token: string): Promise<WhoAmI> {
-  const data = unwrap(await apiFetch("/api/whoami", { token })) as Record<
-    string,
-    unknown
-  > | null;
-  const flags = (data ?? {}) as Record<string, unknown>;
+  const raw = unwrap(await apiFetch("/api/whoami", { token }));
+  const parsed = WhoAmISchema.safeParse(raw ?? {});
+  if (!parsed.success) {
+    throw new OpenProcessingError(
+      "OpenProcessing の応答が想定外の形式でした。",
+      "api"
+    );
+  }
   return {
-    username: flags.username as string | undefined,
-    canWrite: Boolean(flags.tokenWriteAccess),
+    username: parsed.data.username,
+    canWrite: Boolean(parsed.data.tokenWriteAccess),
   };
 }
 
@@ -152,10 +168,19 @@ export async function createSketch(
     isPrivate: meta.isPrivate,
     license: meta.license,
   });
-  const data = unwrap(
+  const raw = unwrap(
     await apiFetch("/api/sketch", { method: "POST", token, body })
-  ) as Record<string, unknown>;
-  const id = (data.visualID ?? data.id) as number;
+  );
+  const parsed = SketchCreateSchema.safeParse(raw);
+  const id = parsed.success
+    ? (parsed.data.visualID ?? parsed.data.id)
+    : undefined;
+  if (id === undefined || Number.isNaN(id)) {
+    throw new OpenProcessingError(
+      "スケッチ作成の応答に有効な ID が含まれていませんでした。",
+      "api"
+    );
+  }
   return { id, url: `${BASE_URL}/sketch/${id}` };
 }
 

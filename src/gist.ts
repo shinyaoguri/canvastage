@@ -1,5 +1,29 @@
+import { z } from "zod";
 import type { Files } from "./preview";
 import { DEFAULT_HTML, DEFAULT_CSS } from "./defaults";
+
+// GitHub Gist API のレスポンスのうち本アプリが使う部分だけを検証する。
+// 想定外の形（エラーエンベロープが 200 で返る等）を早期に弾き、undefined の id が
+// 後続処理へ流れ込むのを防ぐ。未知フィールドは読まないので strip（既定）でよい。
+const GistResultSchema = z.object({
+  id: z.string(),
+  html_url: z.string(),
+});
+
+const GistFileSchema = z
+  .object({
+    filename: z.string(),
+    content: z.string(),
+    truncated: z.boolean().optional(),
+  })
+  .nullable();
+
+const GistResponseSchema = z.object({
+  description: z.string().optional(),
+  files: z.record(z.string(), GistFileSchema),
+});
+
+type GistFile = NonNullable<z.infer<typeof GistFileSchema>>;
 
 export interface GistResult {
   id: string;
@@ -85,8 +109,27 @@ async function sendGistRequest(
     );
   }
 
-  const data = (await response.json()) as { id: string; html_url: string };
+  const data = await parseJson(response, GistResultSchema);
   return { id: data.id, url: data.html_url };
+}
+
+// レスポンス JSON をデコードしてスキーマ検証する。非 JSON / 想定外の形は
+// GistError("api") に正規化し、生の SyntaxError が呼び出し側へ漏れないようにする。
+async function parseJson<T>(
+  response: Response,
+  schema: z.ZodType<T>
+): Promise<T> {
+  let json: unknown;
+  try {
+    json = await response.json();
+  } catch {
+    throw new GistError("GitHub API の応答を解析できませんでした。", "api");
+  }
+  const parsed = schema.safeParse(json);
+  if (!parsed.success) {
+    throw new GistError("GitHub API の応答が想定外の形式でした。", "api");
+  }
+  return parsed.data;
 }
 
 export function createGist(
@@ -154,16 +197,9 @@ export async function fetchGist(gistId: string): Promise<GistImport> {
     );
   }
 
-  const data = (await response.json()) as {
-    description?: string;
-    files: Record<
-      string,
-      { filename: string; content: string; truncated?: boolean } | null
-    >;
-  };
-  const fileList = Object.values(data.files).filter(
-    (f): f is { filename: string; content: string; truncated?: boolean } =>
-      Boolean(f)
+  const data = await parseJson(response, GistResponseSchema);
+  const fileList = Object.values(data.files).filter((f): f is GistFile =>
+    Boolean(f)
   );
   const byName = (name: string) => fileList.find((f) => f.filename === name);
   const html = byName("index.html");
