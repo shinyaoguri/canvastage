@@ -58,4 +58,20 @@ test.describe("editor tabs & run controls", () => {
     await btn.click();
     await expect(btn).toHaveAttribute("title", "Stop");
   });
+
+  test("Ctrl+Enter re-runs the sketch", async ({ page }) => {
+    await openApp(page);
+
+    // 一旦停止して Run 状態にしてから、Ctrl+Enter で再実行されることを確認する。
+    // 注: 実機 mac は物理 Ctrl を WinCtrl バインドで拾うが、この Playwright/
+    // Chromium 環境では Control が CtrlCmd 側にマッチするため、mac 固有経路の
+    // 分離検証にはならない。あくまで「Ctrl+Enter で実行が走る」一般のスモーク。
+    const btn = page.locator("#run-stop-btn");
+    await btn.click();
+    await expect(btn).toHaveAttribute("title", "Run (⌘+Enter)");
+
+    await page.click(".monaco-editor .view-lines");
+    await page.keyboard.press("Control+Enter");
+    await expect(btn).toHaveAttribute("title", "Stop");
+  });
 });
