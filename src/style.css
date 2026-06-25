@@ -734,7 +734,10 @@ a.settings-commit:hover {
 }
 
 #run-stop-btn {
+  /* relative は差分ドット(::after)のアンカー用。.toolbar-btn の top:0.5rem を
+     ここで打ち消さないと relative 化で 8px 下にずれるため top:0 で固定する。 */
   position: relative;
+  top: 0;
   width: 24px;
   height: 24px;
   flex-shrink: 0;
