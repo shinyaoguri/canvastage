@@ -6,7 +6,7 @@ import { createStore } from "./idb-store";
 // ========================
 export const EditorSettingsSchema = z.object({
   // フォント
-  fontSize: z.number().min(10).max(24).default(14),
+  fontSize: z.number().min(10).max(48).default(14),
   fontFamily: z.string().default("'M PLUS 1 Code', monospace"),
   fontWeight: z.number().min(100).max(900).default(400),
   lineHeight: z.number().min(1).max(2).default(1.5),

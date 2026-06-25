@@ -93,7 +93,7 @@ const SETTING_GROUPS: { title: string; settings: SettingDef[] }[] = [
         label: "Size",
         type: "range",
         min: 10,
-        max: 24,
+        max: 48,
         step: 1,
       },
       {

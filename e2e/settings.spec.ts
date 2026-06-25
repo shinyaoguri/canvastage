@@ -135,4 +135,22 @@ test.describe("settings reflect into the editor (production build)", () => {
       .poll(() => computed(page, sel, "color"), { timeout: 4000 })
       .not.toBe(before);
   });
+
+  test("font size slider allows up to 48 and applies", async ({ page }) => {
+    await openSettings(page);
+    // スライダーの上限が 48 に拡張されている
+    expect(
+      await page.getAttribute(
+        '#settings-panel input[data-key="fontSize"]',
+        "max"
+      )
+    ).toBe("48");
+
+    // 48 を指定するとエディタのフォントサイズに反映される
+    const sel = ".monaco-editor .view-line";
+    await setInput(page, "fontSize", 48);
+    await expect
+      .poll(() => computed(page, sel, "font-size"), { timeout: 4000 })
+      .toBe("48px");
+  });
 });
