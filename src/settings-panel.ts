@@ -565,8 +565,8 @@ export class SettingsPanel {
       ?.addEventListener("click", (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
         btn.disabled = true;
-        void Promise.all([clearGithubToken(), clearOpenProcessingToken()]).then(
-          () => {
+        void Promise.all([clearGithubToken(), clearOpenProcessingToken()])
+          .then(() => {
             btn.textContent = "削除しました ✓";
             // 接続ドット等を実態に同期させる
             this.onTokensCleared?.();
@@ -574,8 +574,15 @@ export class SettingsPanel {
               btn.textContent = "保存したトークンを削除";
               btn.disabled = false;
             }, 2000);
-          }
-        );
+          })
+          .catch(() => {
+            // 削除に失敗してもボタンが永久に disabled のまま残らないようにする
+            btn.textContent = "削除に失敗しました";
+            setTimeout(() => {
+              btn.textContent = "保存したトークンを削除";
+              btn.disabled = false;
+            }, 2000);
+          });
       });
 
     // 閉じる

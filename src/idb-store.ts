@@ -12,6 +12,12 @@ export function createStore<V>(dbName: string, storeName: string) {
           }
         },
       });
+      // openDB が失敗（Safari プライベートブラウジング等で IndexedDB 無効）した場合、
+      // 拒否済み Promise を握り続けると以降の get/put/delete が永久に同じ失敗を
+      // 再利用してしまう。reject 時はキャッシュを捨てて次回リトライ可能にする。
+      dbPromise.catch(() => {
+        dbPromise = null;
+      });
     }
     return dbPromise;
   }
