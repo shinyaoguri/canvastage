@@ -7,6 +7,9 @@ function getToastContainer(): HTMLElement {
   if (!toastContainer) {
     toastContainer = document.createElement("div");
     toastContainer.id = "toast-container";
+    // 成否の通知はトーストが唯一の手がかりなので支援技術へ読み上げる。
+    toastContainer.setAttribute("role", "status");
+    toastContainer.setAttribute("aria-live", "polite");
     document.body.appendChild(toastContainer);
   }
   return toastContainer;

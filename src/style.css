@@ -29,6 +29,9 @@
   --editor-suggest-text-color: rgba(255, 255, 255, 0.5);
 
   --editor-padding: 32px;
+
+  /* 右上ツールバーの各ボタン間隔。狭い画面では media query で詰める。 */
+  --toolbar-gap: 36px;
 }
 
 * {
@@ -319,7 +322,7 @@ body > .monaco-editor {
 }
 
 #settings-btn {
-  right: calc(max(0.5rem, var(--editor-padding)) + 36px);
+  right: calc(max(0.5rem, var(--editor-padding)) + 1 * var(--toolbar-gap));
 }
 
 #fullscreen-btn {
@@ -652,17 +655,17 @@ a.settings-commit:hover {
 
 /* サンプルボタン */
 #samples-btn {
-  right: calc(max(0.5rem, var(--editor-padding)) + 72px);
+  right: calc(max(0.5rem, var(--editor-padding)) + 2 * var(--toolbar-gap));
 }
 
 /* シェアボタン */
 #share-btn {
-  right: calc(max(0.5rem, var(--editor-padding)) + 108px);
+  right: calc(max(0.5rem, var(--editor-padding)) + 3 * var(--toolbar-gap));
 }
 
 /* OpenProcessing デプロイボタン */
 #openprocessing-btn {
-  right: calc(max(0.5rem, var(--editor-padding)) + 144px);
+  right: calc(max(0.5rem, var(--editor-padding)) + 4 * var(--toolbar-gap));
 }
 
 #openprocessing-btn.loading svg {
@@ -690,12 +693,12 @@ a.settings-commit:hover {
 
 /* Gist 取り込みボタン（share / OpenProcessing の隣に並べる） */
 #import-btn {
-  right: calc(max(0.5rem, var(--editor-padding)) + 180px);
+  right: calc(max(0.5rem, var(--editor-padding)) + 5 * var(--toolbar-gap));
 }
 
 /* 新規プロジェクトボタン（最外） */
 #new-project-btn {
-  right: calc(max(0.5rem, var(--editor-padding)) + 216px);
+  right: calc(max(0.5rem, var(--editor-padding)) + 6 * var(--toolbar-gap));
 }
 
 #share-btn.loading svg {
@@ -1053,6 +1056,8 @@ a.settings-commit:hover {
   z-index: 150;
   font-family: var(--editor-font-family);
   font-size: 11px;
+  /* パネル枠自体はクリックを透過させ、下のプレビュー操作を妨げない。
+     スクロール/選択が要るメッセージ領域だけ pointer-events を復活させる。 */
   pointer-events: none;
 }
 
@@ -1063,6 +1068,7 @@ a.settings-commit:hover {
 .console-messages {
   overflow-y: auto;
   max-height: 150px;
+  pointer-events: auto;
 }
 
 .console-message {
@@ -1275,4 +1281,60 @@ a.settings-commit:hover {
 
 .op-copy:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+/* ===== キーボードフォーカスの可視化 =====
+   Monaco エディタ内は専用ハイライトに任せて outline を消しているが、
+   ツールバー/タブ/パネル/モーダルの操作子はキーボード利用時に
+   フォーカス位置が分かるよう明示的なリングを出す。 */
+.toolbar-btn:focus-visible,
+#file-tabs button:focus-visible,
+#settings-panel button:focus-visible,
+#settings-panel .custom-select-trigger:focus-visible,
+.op-modal button:focus-visible,
+.op-modal input:focus-visible,
+#project-name:focus-visible,
+.toast-link:focus-visible,
+.toast-copy:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ===== 小さい画面向けの調整 =====
+   ツールバーは絶対配置のため、狭い画面ではボタン間隔と余白を詰めて、
+   中央のプロジェクトバー・左のタブとの衝突を緩和する。デスクトップ前提の
+   ツールだが、最低限の操作性を確保する。 */
+@media (max-width: 600px) {
+  :root {
+    --editor-padding: 8px;
+    --toolbar-gap: 30px;
+  }
+
+  .toolbar-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+  #project-name {
+    max-width: 90px;
+  }
+
+  #console-panel {
+    max-width: calc(100vw - 24px);
+  }
+}
+
+/* ===== モーション低減 =====
+   prefers-reduced-motion 指定時はパネルのスライドやトースト/パルスの
+   アニメーションを無効化する。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

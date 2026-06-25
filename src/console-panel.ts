@@ -19,7 +19,8 @@ export class ConsolePanel {
     this.container = document.createElement("div");
     this.container.id = "console-panel";
     this.container.className = "hidden";
-    this.container.innerHTML = `<div class="console-messages"></div>`;
+    // 実行時のログ/エラーを支援技術へ通知する（role="log" + polite）。
+    this.container.innerHTML = `<div class="console-messages" role="log" aria-live="polite"></div>`;
     parent.appendChild(this.container);
 
     this.messagesEl = this.container.querySelector(".console-messages")!;

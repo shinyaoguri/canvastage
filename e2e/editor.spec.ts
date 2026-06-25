@@ -49,14 +49,15 @@ test.describe("editor tabs & run controls", () => {
     await openApp(page);
 
     // init で初回実行されるため、起動直後は Stop 状態
+    // 実行ラベルは OS により ⌘/Ctrl が変わるため前方一致で判定する。
     const btn = page.locator("#run-stop-btn");
-    await expect(btn).toHaveAttribute("title", "Stop");
+    await expect(btn).toHaveAttribute("title", "停止");
 
     await btn.click();
-    await expect(btn).toHaveAttribute("title", "Run (⌘+Enter)");
+    await expect(btn).toHaveAttribute("title", /^実行/);
 
     await btn.click();
-    await expect(btn).toHaveAttribute("title", "Stop");
+    await expect(btn).toHaveAttribute("title", "停止");
   });
 
   test("Ctrl+Enter re-runs the sketch without inserting a newline", async ({
@@ -67,14 +68,14 @@ test.describe("editor tabs & run controls", () => {
     // 一旦停止して Run 状態にしてから、Ctrl+Enter で再実行されることを確認する。
     const btn = page.locator("#run-stop-btn");
     await btn.click();
-    await expect(btn).toHaveAttribute("title", "Run (⌘+Enter)");
+    await expect(btn).toHaveAttribute("title", /^実行/);
 
     await page.click(".monaco-editor .view-lines");
     const before = await editorText(page);
     await page.keyboard.press("Control+Enter");
 
     // 実行が走り（Stop 状態に戻る）、かつ Enter で改行が挿入されていないこと。
-    await expect(btn).toHaveAttribute("title", "Stop");
+    await expect(btn).toHaveAttribute("title", "停止");
     expect(await editorText(page)).toBe(before);
   });
 
