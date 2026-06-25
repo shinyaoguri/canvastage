@@ -1002,6 +1002,15 @@ a.settings-commit:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.samples-item.active {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 3px 0 0 rgba(120, 180, 255, 0.8);
+}
+
+.samples-item.active .samples-item-name {
+  color: rgba(255, 255, 255, 1);
+}
+
 .samples-item-name {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.8);

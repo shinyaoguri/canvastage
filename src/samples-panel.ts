@@ -79,7 +79,15 @@ export class SamplesPanel {
       this.onSelect(sample.files);
     }
 
-    this.close();
+    // パネルは開いたまま維持し、選択中のサンプルをハイライトして
+    // 続けて別のサンプルへ素早く切り替えられるようにする
+    this.panel.querySelectorAll(".samples-item").forEach((item) => {
+      item.classList.toggle(
+        "active",
+        (item as HTMLElement).dataset.sample === sampleId &&
+          (item as HTMLElement).dataset.category === categoryId
+      );
+    });
   }
 
   private bindEvents(): void {
