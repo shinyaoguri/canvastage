@@ -1,4 +1,4 @@
-name: CI
+name: CI / Deploy
 
 on:
   push:
@@ -8,12 +8,13 @@ on:
     branches:
       - main
 
-# 同一ブランチで連続 push したとき、古い実行をキャンセルして無駄を省く。
+# PR は連続 push で古い実行をキャンセルして無駄を省く。main(本番デプロイ) は
+# 途中キャンセルしない。
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# 既定トークンは読み取りのみに絞る（最小権限）。
+# 既定トークンは読み取りのみ（deploy ジョブのみ追加権限を明示）。
 permissions:
   contents: read
 
@@ -46,6 +47,14 @@ jobs:
       - name: Build (typecheck + bundle)
         run: npm run build
 
+      # deploy ジョブが再利用するビルド成果物（dist/_headers 等を含む）。
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
   e2e:
     name: e2e (settings regression)
     runs-on: ubuntu-latest
@@ -77,3 +86,89 @@ jobs:
           path: playwright-report/
           retention-days: 7
           if-no-files-found: ignore
+
+  deploy:
+    name: deploy (cloudflare pages)
+    runs-on: ubuntu-latest
+    # build の成果物を再利用する（重複ビルドを避ける）。
+    needs: build
+    # Dependabot の PR はセキュリティ上シークレットを受け取れず、デプロイが必ず
+    # 失敗する。ビルド検証は build / e2e ジョブが担うので、このジョブはスキップする。
+    if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+    steps:
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Deploy to Cloudflare Pages (Production)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.ref_name }}
+
+      - name: Deploy to Cloudflare Pages (Preview)
+        if: github.event_name == 'pull_request'
+        id: preview-deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.head_ref }}
+
+      - name: Comment PR with preview URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const output = `${{ steps.preview-deploy.outputs.command-output }}`;
+            const urlMatch = output.match(/https:\/\/[^\s]+\.pages\.dev/);
+            const previewUrl = urlMatch ? urlMatch[0] : null;
+
+            if (!previewUrl) {
+              console.log('Could not extract preview URL from output:', output);
+              return;
+            }
+
+            const body = `## 🚀 Preview Deployment
+
+            | Name | URL |
+            |------|-----|
+            | Preview | ${previewUrl} |
+
+            *Deployed from commit ${context.sha.substring(0, 7)}*`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## 🚀 Preview Deployment')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
