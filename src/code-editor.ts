@@ -241,8 +241,10 @@ export function createEditor(
     contextmenu: false,
   });
 
-  // Ctrl+Enter で実行
+  // ⌘+Enter（mac）/ Ctrl+Enter（Windows/Linux）で実行。
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
+  // mac でも物理 Ctrl+Enter で実行できるようにする（WinCtrl = mac の Ctrl）。
+  editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.Enter, onRun);
 
   // --- 自前のブラケットマッチ ---
   // model.bracketPairs.matchBracket() は正しくペアを返すので、カーソル位置で
