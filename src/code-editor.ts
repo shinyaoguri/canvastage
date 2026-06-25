@@ -329,7 +329,12 @@ export function createEditor(
       updateBracketMatch();
     },
     onDidChange: (callback: () => void) => {
-      editor.onDidChangeModelContent(callback);
+      editor.onDidChangeModelContent((e) => {
+        // setValue 由来（タブ切替・サンプル読込・新規）の flush は実編集ではない
+        // ので無視し、ユーザーのタイプ等だけをコールバックする。
+        if (e.isFlush) return;
+        callback();
+      });
     },
   };
 }
