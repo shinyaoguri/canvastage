@@ -251,7 +251,7 @@ function injectBefore(closingTag: "head" | "body", snippet: string) {
       : html + snippet;
 }
 
-function buildHtml(files: Files): string {
+export function buildHtml(files: Files): string {
   let html = files.html;
 
   const styleTag = `<style>\n${files.css}\n</style>`;

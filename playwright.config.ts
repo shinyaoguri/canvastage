@@ -18,7 +18,21 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // webcam スモークテスト用にフェイクメディアを許可する（権限ダイアログ無し）。
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
+      },
+    },
+  ],
   webServer: {
     command: `npm run build && npm run preview -- --port ${PORT}`,
     url: BASE_URL,

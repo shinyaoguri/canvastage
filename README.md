@@ -31,7 +31,10 @@ npm run build
 # Preview production build
 npm run preview
 
-# Run E2E tests (settings regression, against the production build)
+# Run unit tests (pure logic: gist/preview/OAuth-escape)
+npm test
+
+# Run E2E tests (settings + same-origin preview regression, production build)
 npx playwright install chromium   # first time only
 npm run test:e2e
 ```

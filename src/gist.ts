@@ -155,7 +155,7 @@ export function parseGistId(input: string): string | null {
 }
 
 // _<name>.md タイトルファイル → description の順でプロジェクト名を復元する。
-function resolveProjectName(
+export function resolveProjectName(
   description: string | undefined,
   filenames: string[]
 ): string {
