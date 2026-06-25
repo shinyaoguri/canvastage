@@ -91,7 +91,9 @@ export function createGist(
 ): Promise<GistResult> {
   return sendGistRequest("https://api.github.com/gists", "POST", token, {
     description: description || "canvastage sketch",
-    public: false,
+    // 公開 Gist として作成する。可視性は作成時に固定で、後から PATCH では
+    // 変更できない（既存 Gist の更新は可視性を保ったまま行われる）。
+    public: true,
     files: gistFiles(files, projectName),
   });
 }
