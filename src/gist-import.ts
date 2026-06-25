@@ -70,6 +70,10 @@ export class GistImportButton {
             現在開いているコードは置き換えられます。取り込んだスケッチは新規プロジェクト
             扱いになり、既存の Gist / OpenProcessing 連携とは切り離されます。
           </p>
+          <p class="op-note op-note-warning">
+            ⚠️ 取り込んだコードは実行時にこのアプリと同じ権限で動作します。
+            信頼できる作者の Gist のみ取り込んでください。
+          </p>
         </section>
       </div>
     </div>`;

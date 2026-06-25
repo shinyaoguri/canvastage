@@ -1229,6 +1229,13 @@ a.settings-commit:hover {
   color: rgba(255, 179, 71, 0.8);
 }
 
+.op-note-warning {
+  color: rgba(255, 179, 71, 0.95);
+  border-left: 2px solid rgba(255, 179, 71, 0.6);
+  padding-left: 0.6rem;
+  margin-top: 0.6rem;
+}
+
 .op-divider {
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
