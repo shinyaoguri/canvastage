@@ -693,6 +693,11 @@ a.settings-commit:hover {
   right: calc(max(0.5rem, var(--editor-padding)) + 180px);
 }
 
+/* Gist 取り込みボタン */
+#import-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 216px);
+}
+
 #share-btn.loading svg {
   animation: pulse 1s ease-in-out infinite;
 }
@@ -1069,7 +1074,8 @@ a.settings-commit:hover {
 }
 
 /* OpenProcessing モーダル */
-#op-modal-overlay {
+#op-modal-overlay,
+#import-modal-overlay {
   position: fixed;
   inset: 0;
   display: none;
@@ -1081,7 +1087,8 @@ a.settings-commit:hover {
   padding: 1rem;
 }
 
-#op-modal-overlay.open {
+#op-modal-overlay.open,
+#import-modal-overlay.open {
   display: flex;
 }
 

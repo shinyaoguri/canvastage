@@ -1,8 +1,14 @@
 import type { Files } from "./preview";
+import { DEFAULT_HTML, DEFAULT_CSS } from "./defaults";
 
 export interface GistResult {
   id: string;
   url: string;
+}
+
+export interface GistImport {
+  files: Files;
+  projectName: string;
 }
 
 export class GistError extends Error {
@@ -94,6 +100,99 @@ export function createGist(
     public: false,
     files: gistFiles(files, projectName),
   });
+}
+
+// URL でも生 ID でも受理し、Gist の id（hex）を取り出す。
+// 例: https://gist.github.com/user/<id> / https://gist.github.com/<id> / 生 <id>
+export function parseGistId(input: string): string | null {
+  const match = input.trim().match(/([0-9a-f]{20,})/i);
+  return match ? match[1] : null;
+}
+
+// _<name>.md タイトルファイル → description の順でプロジェクト名を復元する。
+function resolveProjectName(
+  description: string | undefined,
+  filenames: string[]
+): string {
+  const titleFile = filenames.find((name) => /^_.*\.md$/.test(name));
+  if (titleFile) {
+    return titleFile.replace(/^_/, "").replace(/\.md$/, "") || "imported";
+  }
+  const desc = description?.match(/^(.*?)\s+—\s+canvastage sketch$/);
+  return desc ? desc[1] : "imported-sketch";
+}
+
+// 公開 Gist を匿名で取得し、canvastage の 3 ファイルとプロジェクト名へマップする。
+// index.html / style.css が無い Gist は既定値で補い、最低限実行できる形にする。
+export async function fetchGist(gistId: string): Promise<GistImport> {
+  let response: Response;
+  try {
+    response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+  } catch {
+    throw new GistError("ネットワークエラーが発生しました。", "network");
+  }
+
+  if (response.status === 404) {
+    throw new GistError(
+      "Gist が見つかりません。URL を確認してください（公開 Gist のみ対応）。",
+      "api"
+    );
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new GistError(
+      (data as { message?: string }).message ||
+        `GitHub API error (${response.status})`,
+      "api"
+    );
+  }
+
+  const data = (await response.json()) as {
+    description?: string;
+    files: Record<
+      string,
+      { filename: string; content: string; truncated?: boolean } | null
+    >;
+  };
+  const fileList = Object.values(data.files).filter(
+    (f): f is { filename: string; content: string; truncated?: boolean } =>
+      Boolean(f)
+  );
+  const byName = (name: string) => fileList.find((f) => f.filename === name);
+  const html = byName("index.html");
+  const css = byName("style.css");
+  const js = byName("sketch.js");
+
+  if (!html && !css && !js) {
+    throw new GistError(
+      "canvastage 形式の Gist ではありません（index.html / style.css / sketch.js が見つかりません）。",
+      "api"
+    );
+  }
+  // スケッチは通常 1MB 未満。万一 API レスポンスが truncated なら未対応として弾く。
+  if ([html, css, js].some((f) => f?.truncated)) {
+    throw new GistError(
+      "ファイルが大きすぎて取り込めません（1MB 未満にしてください）。",
+      "api"
+    );
+  }
+
+  return {
+    files: {
+      html: html?.content ?? DEFAULT_HTML,
+      css: css?.content ?? DEFAULT_CSS,
+      js: js?.content ?? "",
+    },
+    projectName: resolveProjectName(
+      data.description,
+      fileList.map((f) => f.filename)
+    ),
+  };
 }
 
 export function updateGist(

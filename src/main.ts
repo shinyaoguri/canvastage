@@ -9,6 +9,7 @@ import { DEFAULT_FILES } from "./defaults";
 import { getRandomBasicsSample } from "./samples";
 import { ShareButton } from "./share";
 import { OpenProcessingButton } from "./openprocessing-share";
+import { GistImportButton } from "./gist-import";
 
 type FileType = "html" | "css" | "js";
 
@@ -177,6 +178,9 @@ async function init() {
     () => shareButton.getProjectName()
   );
 
+  // Gist 取り込みボタン（onImport は editor 等の生成後に配線する）
+  const importButton = new GistImportButton(app);
+
   // プロジェクト名エリア（再生ボタン + プロジェクト名）
   const projectBar = document.createElement("div");
   projectBar.id = "project-bar";
@@ -273,16 +277,26 @@ async function init() {
     void openProcessingButton.refreshAuth();
   });
 
-  // サンプル選択時にファイルを読み込み
-  samplesPanel.setOnSelect((sampleFiles) => {
-    files.html = sampleFiles.html;
-    files.css = sampleFiles.css;
-    files.js = sampleFiles.js;
+  // 別スケッチ（サンプル / Gist 取り込み）を読み込む共通処理。
+  // 既存 Gist / OpenProcessing 連携は切り離し、自動更新で上書きしない。
+  const loadFiles = (newFiles: Files) => {
+    files.html = newFiles.html;
+    files.css = newFiles.css;
+    files.js = newFiles.js;
     editor.setValue(files[currentFile]);
-    // 別スケッチを読み込むので既存 Gist / OpenProcessing とは切り離す
     shareButton.detachGist();
     openProcessingButton.detach();
     runCode();
+  };
+
+  // サンプル選択時にファイルを読み込み
+  samplesPanel.setOnSelect((sampleFiles) => loadFiles(sampleFiles));
+
+  // Gist 取り込み時：内容を読み込み、プロジェクト名も復元する（新規扱い）。
+  importButton.setOnImport((importedFiles, projectName) => {
+    loadFiles(importedFiles);
+    shareButton.setProjectName(projectName);
+    projectNameInput.value = projectName;
   });
 
   // タブ切り替え

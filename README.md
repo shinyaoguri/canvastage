@@ -13,6 +13,7 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **Console panel** — Captures `console.log` / `warn` / `error` from the preview iframe
 - **Full input forwarding** — Mouse, keyboard, and touch events pass through to the canvas
 - **Share to GitHub Gist** — Sign in with GitHub to publish/auto-update your sketch as a gist
+- **Import from Gist** — Paste a public canvastage gist URL (or ID) to load it instantly into the editor
 - **Deploy to OpenProcessing** — Plus+ members can publish straight to OpenProcessing via API (sketches are created Private by default); everyone else gets a guided manual-upload flow
 
 ## Getting Started
