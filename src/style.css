@@ -688,9 +688,14 @@ a.settings-commit:hover {
   background: rgba(255, 179, 71, 0.8);
 }
 
-/* 新規プロジェクトボタン */
-#new-project-btn {
+/* Gist 取り込みボタン（share / OpenProcessing の隣に並べる） */
+#import-btn {
   right: calc(max(0.5rem, var(--editor-padding)) + 180px);
+}
+
+/* 新規プロジェクトボタン（最外） */
+#new-project-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 216px);
 }
 
 #share-btn.loading svg {
@@ -1082,7 +1087,8 @@ a.settings-commit:hover {
 }
 
 /* OpenProcessing モーダル */
-#op-modal-overlay {
+#op-modal-overlay,
+#import-modal-overlay {
   position: fixed;
   inset: 0;
   display: none;
@@ -1094,7 +1100,8 @@ a.settings-commit:hover {
   padding: 1rem;
 }
 
-#op-modal-overlay.open {
+#op-modal-overlay.open,
+#import-modal-overlay.open {
   display: flex;
 }
 
