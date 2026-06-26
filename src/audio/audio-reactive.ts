@@ -1,4 +1,8 @@
-import { AudioEngine, type AudioSourceKind } from "./audio-engine";
+import {
+  AudioEngine,
+  type AudioSourceKind,
+  type BeatTuning,
+} from "./audio-engine";
 import {
   createPattern,
   DEFAULT_PATTERN_ID,
@@ -26,6 +30,7 @@ export class AudioReactiveController {
   private pattern: BeatPattern;
   private source: AudioSourceKind = "mic";
   private sensitivity = 0.6;
+  private tuning: Partial<BeatTuning> = {};
   private enabled = false;
   private renderRaf: number | null = null;
   private lastFrame = 0;
@@ -57,6 +62,7 @@ export class AudioReactiveController {
   async enable(source: AudioSourceKind): Promise<boolean> {
     this.source = source;
     this.engine.setSensitivity(this.sensitivity);
+    this.engine.configure(this.tuning);
     this.emit("starting");
     try {
       await this.engine.start(source, {
@@ -99,6 +105,12 @@ export class AudioReactiveController {
   setSensitivity(sensitivity: number): void {
     this.sensitivity = sensitivity;
     this.engine.setSensitivity(sensitivity);
+  }
+
+  // 帯域/床/最小間隔を設定する。実行中でも即反映。
+  configure(tuning: Partial<BeatTuning>): void {
+    this.tuning = { ...this.tuning, ...tuning };
+    this.engine.configure(tuning);
   }
 
   // アクティブパターンを差し替える。

@@ -518,6 +518,47 @@ a.settings-commit:hover {
   margin-bottom: 10px;
 }
 
+/* アコーディオン: 見出しボタン */
+button.settings-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  /* .settings-group-title の見た目を踏襲しつつボタン化 */
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+button.settings-group-toggle:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.settings-group-chevron {
+  transition: transform 0.15s ease;
+  font-size: 12px;
+}
+
+/* 閉じているとき: 本体を隠し、シェブロンを回す。下マージンも詰める。 */
+.settings-group.collapsed .settings-group-body {
+  display: none;
+}
+
+.settings-group.collapsed button.settings-group-toggle {
+  margin-bottom: 0;
+}
+
+.settings-group.collapsed .settings-group-chevron {
+  transform: rotate(-90deg);
+}
+
 .settings-row {
   display: flex;
   align-items: center;

@@ -24,6 +24,8 @@ interface SettingGroup {
   settings: SettingDef[];
   // 特殊セクション識別子。"audio" のときは有効化トグル+ステータスを差し込む。
   id?: string;
+  // true のときアコーディオン（折りたたみ）。既定で閉じた状態で描画する。
+  collapsible?: boolean;
 }
 
 const GOOGLE_FONTS = [
@@ -333,6 +335,7 @@ const SETTING_GROUPS: SettingGroup[] = [
   {
     title: "Audio Reactive (beta)",
     id: "audio",
+    collapsible: true,
     settings: [
       {
         key: "audioSource",
@@ -350,6 +353,38 @@ const SETTING_GROUPS: SettingGroup[] = [
         min: 0,
         max: 1,
         step: 0.05,
+      },
+      {
+        key: "beatBandMinHz",
+        label: "帯域 下限(Hz)",
+        type: "range",
+        min: 20,
+        max: 500,
+        step: 10,
+      },
+      {
+        key: "beatBandMaxHz",
+        label: "帯域 上限(Hz)",
+        type: "range",
+        min: 500,
+        max: 8000,
+        step: 100,
+      },
+      {
+        key: "beatFloor",
+        label: "ノイズ床",
+        type: "range",
+        min: 0,
+        max: 0.03,
+        step: 0.002,
+      },
+      {
+        key: "beatMinIntervalMs",
+        label: "最小間隔(ms)",
+        type: "range",
+        min: 60,
+        max: 400,
+        step: 10,
       },
       {
         key: "beatPattern",
@@ -451,8 +486,23 @@ export class SettingsPanel {
     <div class="settings-content">`;
 
     for (const group of SETTING_GROUPS) {
-      html += `<div class="settings-group">
-        <div class="settings-group-title">${group.title}</div>`;
+      const collapsible = group.collapsible === true;
+      const bodyId = group.id ? `settings-group-${group.id}` : "";
+
+      // 折りたたみ群は見出しをトグルボタンにし、中身を body でくるんで開閉する。
+      // 既定は閉じた状態（collapsed）。
+      if (collapsible) {
+        html += `<div class="settings-group collapsible collapsed">
+          <button type="button" class="settings-group-title settings-group-toggle"
+            aria-expanded="false" aria-controls="${bodyId}">
+            <span>${group.title}</span>
+            <span class="settings-group-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="settings-group-body" id="${bodyId}">`;
+      } else {
+        html += `<div class="settings-group">
+          <div class="settings-group-title">${group.title}</div>`;
+      }
 
       // 音声セクションは有効化トグル + ステータスを先頭に差し込む。
       // 有効状態は永続化しない（既定 OFF・ユーザー操作で権限取得）。
@@ -519,7 +569,8 @@ export class SettingsPanel {
         html += `</div>`;
       }
 
-      html += `</div>`;
+      if (collapsible) html += `</div>`; // close .settings-group-body
+      html += `</div>`; // close .settings-group
     }
 
     // フッター/メタも .settings-content（スクロール領域）の中に置き、ヘッダは
@@ -685,6 +736,16 @@ export class SettingsPanel {
             trigger.focus();
           }
         });
+      });
+    });
+
+    // 折りたたみ群（アコーディオン）の開閉
+    this.panel.querySelectorAll(".settings-group-toggle").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const groupEl = btn.closest(".settings-group");
+        if (!groupEl) return;
+        const collapsed = groupEl.classList.toggle("collapsed");
+        btn.setAttribute("aria-expanded", String(!collapsed));
       });
     });
 

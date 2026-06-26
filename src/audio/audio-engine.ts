@@ -24,18 +24,27 @@ export interface AudioEngineCallbacks {
 // 増えたか（＝アタックの立ち上がり）」を見るので、定常的な雑音（大きくても
 // 変化しない音）は拾わず、キックや手拍子のような過渡音だけを拾える。
 //
-// 検出帯域: 低域(キック/ベース)〜低中域(手拍子/スネア)。高域のヒスは除く。
-const FLUX_BAND_HZ = { min: 30, max: 4000 };
 // 低域レベル表示(onLevel)用の帯域。
 const LOW_BAND_HZ = { min: 20, max: 150 };
 // フラックス履歴の長さ（フレーム数 ≒ 0.7s @60fps）。適応閾値の母数。
 const HISTORY_SIZE = 43;
 // 閾値判定を始めるのに必要な最低履歴数。
 const MIN_HISTORY = 12;
-// 連続発火を防ぐ不応期(ms)。手拍子の連打を潰しすぎない程度。
-const REFRACTORY_MS = 130;
-// 適応閾値 = 平均 + K*標準偏差 + FLOOR。near-silence の微小フラックスを無視する床。
-const FLUX_FLOOR = 0.006;
+
+// 実行中に調整できるチューニング項目（設定スライダーから流し込む）。
+export interface BeatTuning {
+  bandMinHz: number; // 検出帯域 下限
+  bandMaxHz: number; // 検出帯域 上限
+  floor: number; // ノイズ床（適応閾値に加算）
+  refractoryMs: number; // 連続発火を防ぐ最小間隔
+}
+
+const DEFAULT_TUNING: BeatTuning = {
+  bandMinHz: 30,
+  bandMaxHz: 4000,
+  floor: 0.006,
+  refractoryMs: 130,
+};
 
 // 感度(0..1) → 標準偏差係数 K への変換。
 // 感度 0 = 厳しめ（K 大: 平均から大きく外れた強いオンセットのみ）、
@@ -64,6 +73,8 @@ export class AudioEngine {
   private lastBeatAt = 0;
   // 感度由来の標準偏差係数 K。実行中も変更可。
   private fluxK = DEFAULT_K;
+  // 帯域/床/最小間隔のチューニング。実行中も変更可。
+  private tuning: BeatTuning = { ...DEFAULT_TUNING };
   // requestAnimationFrame には時刻が渡るので Date.now を使わずに済む。
   private now = 0;
 
@@ -74,6 +85,11 @@ export class AudioEngine {
   // 感度(0..1)を設定する。実行中でも即反映される。
   setSensitivity(sensitivity: number): void {
     this.fluxK = sensitivityToK(sensitivity);
+  }
+
+  // 帯域/床/最小間隔を設定する。実行中も即反映される。
+  configure(tuning: Partial<BeatTuning>): void {
+    this.tuning = { ...this.tuning, ...tuning };
   }
 
   async start(
@@ -176,13 +192,17 @@ export class AudioEngine {
       Math.min(freq.length - 1, Math.max(1, Math.round(hz / binHz)));
     const lowStart = clampBin(LOW_BAND_HZ.min);
     const lowEnd = clampBin(LOW_BAND_HZ.max);
-    const fluxStart = clampBin(FLUX_BAND_HZ.min);
-    const fluxEnd = clampBin(FLUX_BAND_HZ.max);
 
     const tick = (t: number) => {
       if (!this.running) return;
       this.now = t;
       analyser.getByteFrequencyData(freq);
+
+      // 検出帯域は実行中に変わりうるので毎フレーム算出（下限>上限でも安全に並べ替え）。
+      const a = clampBin(this.tuning.bandMinHz);
+      const b = clampBin(this.tuning.bandMaxHz);
+      const fluxStart = Math.min(a, b);
+      const fluxEnd = Math.max(a, b);
 
       // スペクトラルフラックス: 帯域内の「正の増分」だけを合計（立ち上がり）。
       let fluxSum = 0;
@@ -222,12 +242,12 @@ export class AudioEngine {
       let varSum = 0;
       for (const v of hist) varSum += (v - mean) * (v - mean);
       const std = Math.sqrt(varSum / hist.length);
-      const threshold = mean + this.fluxK * std + FLUX_FLOOR;
+      const threshold = mean + this.fluxK * std + this.tuning.floor;
 
       const isOnset =
         flux > threshold &&
         flux >= this.prevFlux && // 立ち上がりフレームで発火（持続では撃たない）
-        this.now - this.lastBeatAt > REFRACTORY_MS;
+        this.now - this.lastBeatAt > this.tuning.refractoryMs;
 
       if (isOnset) {
         this.lastBeatAt = this.now;

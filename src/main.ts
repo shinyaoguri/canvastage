@@ -318,6 +318,12 @@ async function init() {
     initialSettings.beatPattern
   );
   audioReactive.setSensitivity(initialSettings.beatSensitivity);
+  audioReactive.configure({
+    bandMinHz: initialSettings.beatBandMinHz,
+    bandMaxHz: initialSettings.beatBandMaxHz,
+    floor: initialSettings.beatFloor,
+    refractoryMs: initialSettings.beatMinIntervalMs,
+  });
   audioReactive.setStatusListener((s) => {
     const sourceLabel = s.source === "mic" ? "マイク" : "タブ音声";
     const text =
@@ -336,6 +342,12 @@ async function init() {
   settingsPanel.setOnChange((settings: EditorSettings) => {
     editor.applySettings(settings);
     audioReactive.setSensitivity(settings.beatSensitivity);
+    audioReactive.configure({
+      bandMinHz: settings.beatBandMinHz,
+      bandMaxHz: settings.beatBandMaxHz,
+      floor: settings.beatFloor,
+      refractoryMs: settings.beatMinIntervalMs,
+    });
     audioReactive.setPattern(settings.beatPattern);
     void audioReactive.setSource(settings.audioSource);
   });
