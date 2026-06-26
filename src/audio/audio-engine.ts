@@ -17,38 +17,53 @@ export interface AudioEngineCallbacks {
   onStop?: () => void;
 }
 
-// --- ビート検出パラメータ（MVP の既定値） ---
-// 低域（おおよそキック/ベース帯）の Hz 範囲。
+// --- オンセット（ビート）検出パラメータ ---
+//
+// 方式: スペクトラルフラックス + 適応閾値。
+// 「絶対エネルギーが平均を超えたか」ではなく「スペクトルが前フレームから急に
+// 増えたか（＝アタックの立ち上がり）」を見るので、定常的な雑音（大きくても
+// 変化しない音）は拾わず、キックや手拍子のような過渡音だけを拾える。
+//
+// 検出帯域: 低域(キック/ベース)〜低中域(手拍子/スネア)。高域のヒスは除く。
+const FLUX_BAND_HZ = { min: 30, max: 4000 };
+// 低域レベル表示(onLevel)用の帯域。
 const LOW_BAND_HZ = { min: 20, max: 150 };
-// 直近エネルギーの移動平均ウィンドウ（フレーム数 ≒ 0.7s @60fps）。
+// フラックス履歴の長さ（フレーム数 ≒ 0.7s @60fps）。適応閾値の母数。
 const HISTORY_SIZE = 43;
-// 感度スライダー(0..1)→ビート判定の閾値（移動平均に対する倍率）への変換。
-// 感度 0 = 厳しめ（強いビートのみ）、感度 1 = 緩め（小さな変化でも反応）。
-const THRESHOLD_STRICT = 1.8;
-const THRESHOLD_LOOSE = 1.05;
-export function sensitivityToThreshold(sensitivity: number): number {
+// 閾値判定を始めるのに必要な最低履歴数。
+const MIN_HISTORY = 12;
+// 連続発火を防ぐ不応期(ms)。手拍子の連打を潰しすぎない程度。
+const REFRACTORY_MS = 130;
+// 適応閾値 = 平均 + K*標準偏差 + FLOOR。near-silence の微小フラックスを無視する床。
+const FLUX_FLOOR = 0.006;
+
+// 感度(0..1) → 標準偏差係数 K への変換。
+// 感度 0 = 厳しめ（K 大: 平均から大きく外れた強いオンセットのみ）、
+// 感度 1 = 緩め（K 小: 小さなオンセットでも拾う）。
+const K_STRICT = 3.5;
+const K_LOOSE = 1.0;
+export function sensitivityToK(sensitivity: number): number {
   const s = Math.min(1, Math.max(0, sensitivity));
-  return THRESHOLD_STRICT + (THRESHOLD_LOOSE - THRESHOLD_STRICT) * s;
+  return K_STRICT + (K_LOOSE - K_STRICT) * s;
 }
-// 既定感度（0.6）はおおよそ従来の固定閾値 1.35 に相当する。
-const DEFAULT_THRESHOLD = sensitivityToThreshold(0.6);
-// これ未満の音量は無音とみなしビート判定しない（0..1）。
-const MIN_ENERGY_FLOOR = 0.08;
-// 連続発火を防ぐ不応期(ms)。
-const REFRACTORY_MS = 110;
+const DEFAULT_K = sensitivityToK(0.6);
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private stream: MediaStream | null = null;
   private analyser: AnalyserNode | null = null;
   private freq: Uint8Array<ArrayBuffer> | null = null;
+  // 前フレームのスペクトル（フラックス計算用）。
+  private prevFreq: Uint8Array<ArrayBuffer> | null = null;
   private rafId: number | null = null;
   private running = false;
 
-  private history: number[] = [];
+  // フラックスの履歴と直前値（適応閾値とピーク判定用）。
+  private fluxHistory: number[] = [];
+  private prevFlux = 0;
   private lastBeatAt = 0;
-  // 感度スライダー由来のビート判定閾値（移動平均に対する倍率）。実行中も変更可。
-  private threshold = DEFAULT_THRESHOLD;
+  // 感度由来の標準偏差係数 K。実行中も変更可。
+  private fluxK = DEFAULT_K;
   // requestAnimationFrame には時刻が渡るので Date.now を使わずに済む。
   private now = 0;
 
@@ -58,7 +73,7 @@ export class AudioEngine {
 
   // 感度(0..1)を設定する。実行中でも即反映される。
   setSensitivity(sensitivity: number): void {
-    this.threshold = sensitivityToThreshold(sensitivity);
+    this.fluxK = sensitivityToK(sensitivity);
   }
 
   async start(
@@ -103,13 +118,16 @@ export class AudioEngine {
     const srcNode = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.6;
+    // フラックスは前フレームとの差なので、時間平滑は弱めにして過渡音を残す。
+    analyser.smoothingTimeConstant = 0.15;
     srcNode.connect(analyser); // destination へは繋がない（ハウリング/二重再生防止）
 
     this.ctx = ctx;
     this.analyser = analyser;
     this.freq = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
-    this.history = [];
+    this.prevFreq = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
+    this.fluxHistory = [];
+    this.prevFlux = 0;
     this.lastBeatAt = 0;
     this.running = true;
 
@@ -151,19 +169,30 @@ export class AudioEngine {
     const analyser = this.analyser!;
     const ctx = this.ctx!;
     const freq = this.freq!;
+    const prev = this.prevFreq!;
     const binHz = ctx.sampleRate / analyser.fftSize;
-    const lowStart = Math.max(1, Math.floor(LOW_BAND_HZ.min / binHz));
-    const lowEnd = Math.min(
-      freq.length - 1,
-      Math.ceil(LOW_BAND_HZ.max / binHz)
-    );
+
+    const clampBin = (hz: number) =>
+      Math.min(freq.length - 1, Math.max(1, Math.round(hz / binHz)));
+    const lowStart = clampBin(LOW_BAND_HZ.min);
+    const lowEnd = clampBin(LOW_BAND_HZ.max);
+    const fluxStart = clampBin(FLUX_BAND_HZ.min);
+    const fluxEnd = clampBin(FLUX_BAND_HZ.max);
 
     const tick = (t: number) => {
       if (!this.running) return;
       this.now = t;
       analyser.getByteFrequencyData(freq);
 
-      // 低域エネルギー（0..1）
+      // スペクトラルフラックス: 帯域内の「正の増分」だけを合計（立ち上がり）。
+      let fluxSum = 0;
+      for (let i = fluxStart; i <= fluxEnd; i++) {
+        const d = freq[i] - prev[i];
+        if (d > 0) fluxSum += d;
+      }
+      const flux = fluxSum / ((fluxEnd - fluxStart + 1) * 255);
+
+      // 低域レベル（onLevel 用、0..1）
       let lowSum = 0;
       for (let i = lowStart; i <= lowEnd; i++) lowSum += freq[i];
       const low = lowSum / ((lowEnd - lowStart + 1) * 255);
@@ -173,35 +202,47 @@ export class AudioEngine {
       for (let i = 0; i < freq.length; i++) allSum += freq[i];
       const overall = allSum / (freq.length * 255);
 
+      prev.set(freq); // 次フレームのフラックス用に保存
+
       cb.onLevel?.(low, overall);
-      this.detectBeat(low, cb);
+      this.detectOnset(flux, cb);
 
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);
   }
 
-  private detectBeat(low: number, cb: AudioEngineCallbacks): void {
-    const avg =
-      this.history.length > 0
-        ? this.history.reduce((a, b) => a + b, 0) / this.history.length
-        : 0;
+  // フラックスの適応閾値（平均 + K*標準偏差 + 床）を超え、かつ立ち上がり中で
+  // 不応期を過ぎていればオンセットとみなす。定常ノイズは平均/標準偏差が高く
+  // なるため弾かれ、過渡音（キック/手拍子）だけが閾値を超える。
+  private detectOnset(flux: number, cb: AudioEngineCallbacks): void {
+    const hist = this.fluxHistory;
+    if (hist.length >= MIN_HISTORY) {
+      const mean = hist.reduce((a, b) => a + b, 0) / hist.length;
+      let varSum = 0;
+      for (const v of hist) varSum += (v - mean) * (v - mean);
+      const std = Math.sqrt(varSum / hist.length);
+      const threshold = mean + this.fluxK * std + FLUX_FLOOR;
 
-    const isBeat =
-      this.history.length >= 8 &&
-      low > MIN_ENERGY_FLOOR &&
-      low > avg * this.threshold &&
-      this.now - this.lastBeatAt > REFRACTORY_MS;
+      const isOnset =
+        flux > threshold &&
+        flux >= this.prevFlux && // 立ち上がりフレームで発火（持続では撃たない）
+        this.now - this.lastBeatAt > REFRACTORY_MS;
 
-    if (isBeat) {
-      this.lastBeatAt = this.now;
-      // ベースライン超過の比率を 0..1 に正規化（強いビートほど 1 に近い）。
-      const intensity = Math.min(1, (low - avg) / Math.max(avg, 0.05));
-      cb.onBeat?.(intensity);
+      if (isOnset) {
+        this.lastBeatAt = this.now;
+        // 閾値超過分を 0..1 に正規化（強いアタックほど 1 に近い）。
+        const intensity = Math.min(
+          1,
+          (flux - threshold) / Math.max(std * 2, 0.02)
+        );
+        cb.onBeat?.(intensity);
+      }
     }
 
-    this.history.push(low);
-    if (this.history.length > HISTORY_SIZE) this.history.shift();
+    this.prevFlux = flux;
+    hist.push(flux);
+    if (hist.length > HISTORY_SIZE) hist.shift();
   }
 
   async stop(): Promise<void> {
@@ -216,6 +257,7 @@ export class AudioEngine {
     }
     this.analyser = null;
     this.freq = null;
+    this.prevFreq = null;
     if (this.ctx) {
       try {
         await this.ctx.close();
@@ -224,6 +266,7 @@ export class AudioEngine {
       }
       this.ctx = null;
     }
-    this.history = [];
+    this.fluxHistory = [];
+    this.prevFlux = 0;
   }
 }
