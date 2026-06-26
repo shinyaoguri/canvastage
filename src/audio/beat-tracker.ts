@@ -23,7 +23,9 @@ export interface TempoEstimate {
 export function median(values: ArrayLike<number>): number {
   const n = values.length;
   if (n === 0) return 0;
-  const arr = Array.prototype.slice.call(values).sort((a: number, b: number) => a - b);
+  const arr = Array.prototype.slice
+    .call(values)
+    .sort((a: number, b: number) => a - b);
   const mid = n >> 1;
   return n % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
 }
