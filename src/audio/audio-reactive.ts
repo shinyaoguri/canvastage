@@ -1,6 +1,7 @@
 import {
   AudioEngine,
   type AudioSourceKind,
+  type BeatMode,
   type BeatTuning,
 } from "./audio-engine";
 import {
@@ -31,6 +32,7 @@ export class AudioReactiveController {
   private source: AudioSourceKind = "mic";
   private sensitivity = 0.6;
   private tuning: Partial<BeatTuning> = {};
+  private mode: BeatMode = "onset";
   private enabled = false;
   private renderRaf: number | null = null;
   private lastFrame = 0;
@@ -63,6 +65,7 @@ export class AudioReactiveController {
     this.source = source;
     this.engine.setSensitivity(this.sensitivity);
     this.engine.configure(this.tuning);
+    this.engine.setMode(this.mode);
     this.emit("starting");
     try {
       await this.engine.start(source, {
@@ -111,6 +114,12 @@ export class AudioReactiveController {
   configure(tuning: Partial<BeatTuning>): void {
     this.tuning = { ...this.tuning, ...tuning };
     this.engine.configure(tuning);
+  }
+
+  // 検出方式（onset / lock）を設定する。実行中でも即反映。
+  setMode(mode: BeatMode): void {
+    this.mode = mode;
+    this.engine.setMode(mode);
   }
 
   // アクティブパターンを差し替える。

@@ -17,6 +17,12 @@ const AUDIO_SOURCE_OPTIONS: { value: string; label: string }[] = [
   ...(supportsTabAudio() ? [{ value: "tab", label: "Tab audio" }] : []),
 ];
 
+// 検出方式: Onset=立ち上がりをそのまま発火 / Beat lock=テンポ推定して拍に同期。
+const BEAT_MODE_OPTIONS: { value: string; label: string }[] = [
+  { value: "onset", label: "Onset" },
+  { value: "lock", label: "Beat lock" },
+];
+
 interface SettingDef {
   key: keyof EditorSettings;
   label: string;
@@ -371,6 +377,12 @@ const SETTING_GROUPS: SettingGroup[] = [
         options: AUDIO_SOURCE_OPTIONS,
       },
       {
+        key: "beatMode",
+        label: "Detection",
+        type: "select",
+        options: BEAT_MODE_OPTIONS,
+      },
+      {
         key: "beatSensitivity",
         label: "Sensitivity",
         type: "range",
@@ -390,9 +402,9 @@ const SETTING_GROUPS: SettingGroup[] = [
         key: "beatBandMaxHz",
         label: "Band max (Hz)",
         type: "range",
-        min: 500,
+        min: 80,
         max: 8000,
-        step: 100,
+        step: 20,
       },
       {
         key: "beatFloor",
