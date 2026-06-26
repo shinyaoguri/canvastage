@@ -344,6 +344,14 @@ const SETTING_GROUPS: SettingGroup[] = [
         ],
       },
       {
+        key: "beatSensitivity",
+        label: "感度",
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+      {
         key: "beatPattern",
         label: "パターン",
         type: "select",

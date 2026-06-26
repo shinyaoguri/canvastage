@@ -25,6 +25,7 @@ export class AudioReactiveController {
   private overlay: HTMLElement;
   private pattern: BeatPattern;
   private source: AudioSourceKind = "mic";
+  private sensitivity = 0.6;
   private enabled = false;
   private renderRaf: number | null = null;
   private lastFrame = 0;
@@ -55,6 +56,7 @@ export class AudioReactiveController {
   // 音源を取得して解析・描画を開始する。失敗時は false を返し state=error を通知。
   async enable(source: AudioSourceKind): Promise<boolean> {
     this.source = source;
+    this.engine.setSensitivity(this.sensitivity);
     this.emit("starting");
     try {
       await this.engine.start(source, {
@@ -91,6 +93,12 @@ export class AudioReactiveController {
       return;
     }
     await this.enable(source);
+  }
+
+  // ビート感度(0..1)を設定する。実行中でも即反映。
+  setSensitivity(sensitivity: number): void {
+    this.sensitivity = sensitivity;
+    this.engine.setSensitivity(sensitivity);
   }
 
   // アクティブパターンを差し替える。

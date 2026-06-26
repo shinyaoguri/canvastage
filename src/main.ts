@@ -317,6 +317,7 @@ async function init() {
     app,
     initialSettings.beatPattern
   );
+  audioReactive.setSensitivity(initialSettings.beatSensitivity);
   audioReactive.setStatusListener((s) => {
     const sourceLabel = s.source === "mic" ? "マイク" : "タブ音声";
     const text =
@@ -334,6 +335,7 @@ async function init() {
   // 設定変更時にエディタへ反映し、音声の音源/パターンを同期する
   settingsPanel.setOnChange((settings: EditorSettings) => {
     editor.applySettings(settings);
+    audioReactive.setSensitivity(settings.beatSensitivity);
     audioReactive.setPattern(settings.beatPattern);
     void audioReactive.setSource(settings.audioSource);
   });

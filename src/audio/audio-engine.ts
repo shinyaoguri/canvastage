@@ -22,8 +22,16 @@ export interface AudioEngineCallbacks {
 const LOW_BAND_HZ = { min: 20, max: 150 };
 // 直近エネルギーの移動平均ウィンドウ（フレーム数 ≒ 0.7s @60fps）。
 const HISTORY_SIZE = 43;
-// 平均をこの倍率超えたらビート候補。
-const BEAT_THRESHOLD = 1.35;
+// 感度スライダー(0..1)→ビート判定の閾値（移動平均に対する倍率）への変換。
+// 感度 0 = 厳しめ（強いビートのみ）、感度 1 = 緩め（小さな変化でも反応）。
+const THRESHOLD_STRICT = 1.8;
+const THRESHOLD_LOOSE = 1.05;
+export function sensitivityToThreshold(sensitivity: number): number {
+  const s = Math.min(1, Math.max(0, sensitivity));
+  return THRESHOLD_STRICT + (THRESHOLD_LOOSE - THRESHOLD_STRICT) * s;
+}
+// 既定感度（0.6）はおおよそ従来の固定閾値 1.35 に相当する。
+const DEFAULT_THRESHOLD = sensitivityToThreshold(0.6);
 // これ未満の音量は無音とみなしビート判定しない（0..1）。
 const MIN_ENERGY_FLOOR = 0.08;
 // 連続発火を防ぐ不応期(ms)。
@@ -39,11 +47,18 @@ export class AudioEngine {
 
   private history: number[] = [];
   private lastBeatAt = 0;
+  // 感度スライダー由来のビート判定閾値（移動平均に対する倍率）。実行中も変更可。
+  private threshold = DEFAULT_THRESHOLD;
   // requestAnimationFrame には時刻が渡るので Date.now を使わずに済む。
   private now = 0;
 
   isRunning(): boolean {
     return this.running;
+  }
+
+  // 感度(0..1)を設定する。実行中でも即反映される。
+  setSensitivity(sensitivity: number): void {
+    this.threshold = sensitivityToThreshold(sensitivity);
   }
 
   async start(
@@ -175,7 +190,7 @@ export class AudioEngine {
     const isBeat =
       this.history.length >= 8 &&
       low > MIN_ENERGY_FLOOR &&
-      low > avg * BEAT_THRESHOLD &&
+      low > avg * this.threshold &&
       this.now - this.lastBeatAt > REFRACTORY_MS;
 
     if (isBeat) {
