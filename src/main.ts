@@ -155,6 +155,8 @@ async function init() {
   // 設定を読み込んで適用（SettingsPanel にも渡して IndexedDB の二重読みを避ける）
   const initialSettings = await loadSettings();
   applySettings(initialSettings);
+  // 最新の設定値（runCode の切り替え演出など、実行時に参照する用）。
+  let currentSettings = initialSettings;
 
   // ファイル内容を管理（basicsからランダムに初期サンプルを選択）
   const initialFiles = getRandomBasicsSample() ?? { ...DEFAULT_FILES };
@@ -264,7 +266,10 @@ async function init() {
   const runCode = () => {
     snapshot();
     consolePanel.clear();
-    preview.run(files);
+    preview.run(files, {
+      transition: currentSettings.previewTransition,
+      durationMs: currentSettings.previewTransitionMs,
+    });
     isRunning = true;
     // 今のコードを実行したので、未実行の変更は無くなった。
     staleSinceRun = false;
@@ -338,8 +343,10 @@ async function init() {
     settingsPanel.setAudioStatus(text, s.state === "on");
   });
 
-  // 設定変更時にエディタへ反映し、音声の音源/パターンを同期する
+  // 設定変更時にエディタへ反映し、音声の音源/パターンを同期する。
+  // 最新設定は runCode のトランジション参照用にも保持する。
   settingsPanel.setOnChange((settings: EditorSettings) => {
+    currentSettings = settings;
     editor.applySettings(settings);
     audioReactive.setSensitivity(settings.beatSensitivity);
     audioReactive.configure({

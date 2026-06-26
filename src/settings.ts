@@ -69,6 +69,10 @@ export const EditorSettingsSchema = z.object({
   // テーマ
   editorTheme: z.string().default("transparent-dark"),
 
+  // プレビュー再実行時の切り替え演出（"none"=即時）
+  previewTransition: z.string().default("none"),
+  previewTransitionMs: z.number().min(100).max(2000).default(500),
+
   // 音声ビート可視化（有効/無効は永続化せず毎回 OFF 始動。音源/パターン/感度を保存）
   audioSource: z.enum(["mic", "tab"]).default("mic"),
   beatPattern: z.string().default("frame-flash"),

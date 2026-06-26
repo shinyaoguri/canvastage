@@ -8,6 +8,7 @@ import {
 import { clearToken as clearGithubToken } from "./github-auth";
 import { clearToken as clearOpenProcessingToken } from "./openprocessing-auth";
 import { PATTERN_OPTIONS } from "./audio/beat-patterns";
+import { TRANSITION_OPTIONS } from "./transitions";
 
 interface SettingDef {
   key: keyof EditorSettings;
@@ -333,6 +334,25 @@ const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
+    title: "Transition",
+    settings: [
+      {
+        key: "previewTransition",
+        label: "Type",
+        type: "select",
+        options: TRANSITION_OPTIONS,
+      },
+      {
+        key: "previewTransitionMs",
+        label: "Duration (ms)",
+        type: "range",
+        min: 100,
+        max: 2000,
+        step: 50,
+      },
+    ],
+  },
+  {
     title: "Audio Reactive (beta)",
     id: "audio",
     collapsible: true,
@@ -604,6 +624,16 @@ export class SettingsPanel {
   }
 
   private bindEvents(): void {
+    // 折りたたみ群（アコーディオン）の開閉
+    this.panel.querySelectorAll(".settings-group-toggle").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const groupEl = btn.closest(".settings-group");
+        if (!groupEl) return;
+        const collapsed = groupEl.classList.toggle("collapsed");
+        btn.setAttribute("aria-expanded", String(!collapsed));
+      });
+    });
+
     // 入力変更（range, text, color）
     this.panel
       .querySelectorAll("input:not([type='checkbox'])")
@@ -736,16 +766,6 @@ export class SettingsPanel {
             trigger.focus();
           }
         });
-      });
-    });
-
-    // 折りたたみ群（アコーディオン）の開閉
-    this.panel.querySelectorAll(".settings-group-toggle").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const groupEl = btn.closest(".settings-group");
-        if (!groupEl) return;
-        const collapsed = groupEl.classList.toggle("collapsed");
-        btn.setAttribute("aria-expanded", String(!collapsed));
       });
     });
 

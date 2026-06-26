@@ -49,8 +49,9 @@ body,
   background: #000;
 }
 
-/* プレビュー iframe */
-#preview-frame {
+/* プレビュー iframe（ダブルバッファで 2 枚。トランジション時に裏で起動して
+   アニメーションで入れ替える） */
+.preview-frame {
   position: fixed;
   top: 0;
   left: 0;
@@ -58,6 +59,8 @@ body,
   height: 100%;
   border: none;
   z-index: 0;
+  /* トランジションで transform する際の合成を安定させる。 */
+  will-change: opacity, transform;
 }
 
 /* Monaco Editor コンテナ */

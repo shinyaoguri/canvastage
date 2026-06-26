@@ -27,7 +27,7 @@ test.describe("audio reactive beat visualizer", () => {
 
     await page.click("#settings-btn");
     // Audio セクションはアコーディオンで既定折りたたみ。まず展開する。
-    await page.click(".settings-group-toggle");
+    await page.click('button[aria-controls="settings-group-audio"]');
     // フラッシュ中はオーバーレイで要素が不安定になり .check() が二度押しに
     // なりうるため、単発 click で操作して結果状態を検証する。
     await page.locator("#audio-enable").click();
