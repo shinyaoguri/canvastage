@@ -1402,6 +1402,23 @@ button.settings-group-toggle:hover {
     inset 0 0 40px 4px rgba(255, 255, 255, 0.6);
 }
 
+/* 全画面フラッシュ: 画面全体を白く。 */
+#beat-overlay.beat-full-flash {
+  background: #ffffff;
+}
+
+/* ビネット: 画面の縁を黒く締める（フラッシュの逆）。 */
+#beat-overlay.beat-vignette {
+  box-shadow: inset 0 0 180px 56px rgba(0, 0, 0, 0.95);
+}
+
+/* リング: 画面内側に白い枠線をくっきり出す。 */
+#beat-overlay.beat-ring {
+  box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.95);
+}
+
+/* カラーパルス: 背景色は JS が hsl で毎ビート設定する（静的指定は不要）。 */
+
 /* 設定パネル: 音声セクションの補助テキスト */
 .audio-status {
   font-size: 11.5px;
