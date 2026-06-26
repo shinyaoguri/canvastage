@@ -11,7 +11,7 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **8 editor themes** — transparent-dark, monokai, dracula, github-dark, nord, solarized, one-dark, cyberpunk
 - **Sample browser** — Explore categorized examples: basics, animation, generative, interaction, 3D, libraries, ML, experimental
 - **Console panel** — Captures `console.log` / `warn` / `error` from the preview iframe
-- **Audio-reactive beat visualizer (beta)** — Off by default; enable in Settings to react to live audio. Pick the source (microphone or shared-tab audio) and a visual pattern (first one: a soft white flash around the window frame on bass hits). Enabling prompts for the relevant permission; the on/off state is per-session
+- **Audio-reactive beat visualizer (beta)** — Off by default; enable in Settings to react to live audio. Pick the source (microphone or shared-tab audio) and a visual pattern (first one: a soft white flash around the window frame on bass hits). Two detection modes: **Onset** fires on every attack (fast, but also catches off-beats and hi-hats), while **Beat lock** estimates the tempo and phase-locks to the musical beat grid (takes a few seconds to lock, falls back to onset until then). Enabling prompts for the relevant permission; the on/off state is per-session
 - **Re-run transitions** — Optional slide-style animation when you re-run a sketch (dissolve / slide / wipe / zoom), with adjustable duration. Off by default; pick one in Settings → Transition
 - **Full input forwarding** — Mouse, keyboard, and touch events pass through to the canvas
 - **Share to GitHub Gist** — Sign in with GitHub to publish/auto-update your sketch as a gist

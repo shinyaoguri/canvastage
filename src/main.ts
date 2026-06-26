@@ -328,6 +328,7 @@ async function init() {
     initialSettings.beatPattern
   );
   audioReactive.setSensitivity(initialSettings.beatSensitivity);
+  audioReactive.setMode(initialSettings.beatMode);
   audioReactive.configure({
     bandMinHz: initialSettings.beatBandMinHz,
     bandMaxHz: initialSettings.beatBandMaxHz,
@@ -354,6 +355,7 @@ async function init() {
     currentSettings = settings;
     editor.applySettings(settings);
     audioReactive.setSensitivity(settings.beatSensitivity);
+    audioReactive.setMode(settings.beatMode);
     audioReactive.configure({
       bandMinHz: settings.beatBandMinHz,
       bandMaxHz: settings.beatBandMaxHz,

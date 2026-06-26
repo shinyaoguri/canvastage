@@ -76,11 +76,15 @@ export const EditorSettingsSchema = z.object({
   // 音声ビート可視化（有効/無効は永続化せず毎回 OFF 始動。音源/パターン/感度を保存）
   audioSource: z.enum(["mic", "tab"]).default("mic"),
   beatPattern: z.string().default("frame-flash"),
-  // ビート感度（0=厳しめ / 1=緩め）。閾値スライダーとして UI に出す。
+  // 検出方式: "onset"=立ち上がりをそのまま発火 / "lock"=テンポ推定して拍に位相同期。
+  beatMode: z.enum(["onset", "lock"]).default("onset"),
+  // ビート感度（0=厳しめ / 1=緩め）。閾値スライダーとして UI に出す。onset モードでは
+  // 中央値倍率、lock モードでは信頼度しきい値に効く（どちらも「撃ちやすさ」）。
   beatSensitivity: z.number().min(0).max(1).default(0.6),
-  // 検出帯域(Hz)。下限=キック/ベース寄り、上限=手拍子/スネア寄り。
-  beatBandMinHz: z.number().min(20).max(500).default(30),
-  beatBandMaxHz: z.number().min(500).max(8000).default(4000),
+  // 検出帯域(Hz)。既定はキック中心（音楽の拍≒キック）。下限=キック/ベース寄り、
+  // 上限=手拍子/スネア寄り。広げるほど過渡音を広く拾う（誤検出も増える）。
+  beatBandMinHz: z.number().min(20).max(500).default(40),
+  beatBandMaxHz: z.number().min(80).max(8000).default(180),
   // ノイズ床（これ未満のフラックスは無視）。
   beatFloor: z.number().min(0).max(0.03).default(0.006),
   // 連続発火を防ぐ最小間隔(ms)。
