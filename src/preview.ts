@@ -1,3 +1,5 @@
+import { getTransition, type PreviewTransition } from "./transitions";
+
 export interface Files {
   html: string;
   css: string;
@@ -285,14 +287,50 @@ export function buildHtml(files: Files): string {
   return html;
 }
 
+// 切り替えアニメーション用のオプション（main から設定値を渡す）。
+export interface RunOptions {
+  transition?: string; // トランジション id（"none" なら即時）
+  durationMs?: number; // アニメーション時間
+}
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+const nextPaint = (): Promise<void> =>
+  new Promise((r) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => r()))
+  );
+
 export class Preview {
-  private iframe: HTMLIFrameElement;
+  // ダブルバッファ: 2 枚の iframe を持ち、トランジション時は裏で新フレームを
+  // 起動してからアニメーションで入れ替える。アクティブな方に id="preview-frame"
+  // を付け替える（入力ブリッジ/コンソール検証/E2E はこれを参照する）。
+  private frames: [HTMLIFrameElement, HTMLIFrameElement];
+  private activeIndex = 0;
   // 入力ブリッジで document/window に張るリスナをまとめて外せるようにする。
   private bridgeController = new AbortController();
+  // 一度でも実行したか（初回は遷移元が無いので即時表示）。
+  private hasRendered = false;
+  // 進行中のトランジション Animation 群（中断/再実行用）。
+  private transitionAnims: Animation[] | null = null;
+  // run のたびに増やし、非同期処理が古い実行のものか判定する世代カウンタ。
+  private gen = 0;
 
   constructor(container: HTMLElement) {
-    this.iframe = document.createElement("iframe");
-    this.iframe.id = "preview-frame";
+    this.frames = [this.createFrame(), this.createFrame()];
+    this.frames.forEach((f) => container.appendChild(f));
+    // 初期: frame[0] をアクティブ、frame[1] は隠す。
+    this.frames[0].id = "preview-frame";
+    this.frames[1].style.visibility = "hidden";
+
+    // 親ウィンドウの入力イベントをiframeに転送
+    this.setupInputBridge();
+  }
+
+  private createFrame(): HTMLIFrameElement {
+    const iframe = document.createElement("iframe");
+    iframe.className = "preview-frame";
     // ⚠️ 意図的な設計判断 — allow-same-origin は必須。外さないこと。
     //
     // 「同一オリジンの iframe で任意コードを実行するのは危険」に見え、
@@ -314,24 +352,29 @@ export class Preview {
     // CLAUDE.md の "Design decisions" を参照。
     //
     // top-navigation / popups / forms は引き続きブロックして最小限の保護を残す。
-    this.iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
     // webcam / ML 系サンプルのためにメディア・センサー機能を委譲する
     // （Permissions Policy は sandbox とは独立して制御される）。
-    this.iframe.setAttribute(
+    iframe.setAttribute(
       "allow",
       "camera; microphone; midi; accelerometer; gyroscope; xr-spatial-tracking"
     );
-    container.appendChild(this.iframe);
+    return iframe;
+  }
 
-    // 親ウィンドウの入力イベントをiframeに転送
-    this.setupInputBridge();
+  private get active(): HTMLIFrameElement {
+    return this.frames[this.activeIndex];
+  }
+  private get inactive(): HTMLIFrameElement {
+    return this.frames[this.activeIndex ^ 1];
   }
 
   private setupInputBridge(): void {
     const signal = this.bridgeController.signal;
     const post = (data: Record<string, unknown>) => {
-      if (!this.iframe.contentWindow) return;
-      this.iframe.contentWindow.postMessage(data, "*");
+      const win = this.active.contentWindow;
+      if (!win) return;
+      win.postMessage(data, "*");
     };
 
     // マウスイベント
@@ -433,21 +476,147 @@ export class Preview {
 
   // コンソールパネルが postMessage の送信元を検証するために使う。
   getContentWindow(): Window | null {
-    return this.iframe.contentWindow;
+    return this.active.contentWindow;
   }
 
-  run(files: Files): void {
-    this.iframe.srcdoc = buildHtml(files);
+  // スケッチを実行する。トランジション指定があり、かつ既に何か実行中なら、
+  // 裏フレームで新スケッチを起動してからアニメーションで入れ替える。
+  run(files: Files, options: RunOptions = {}): void {
+    const myGen = ++this.gen;
+    const html = buildHtml(files);
+    const transition =
+      options.transition && options.durationMs
+        ? getTransition(options.transition)
+        : null;
+    const useTransition =
+      transition !== null &&
+      (options.durationMs ?? 0) > 0 &&
+      this.hasRendered &&
+      !prefersReducedMotion();
+
+    if (!useTransition) {
+      // 即時切替（従来動作）。進行中の遷移があれば打ち切り、アクティブを中立表示・
+      // 非アクティブを隠した状態にしてから差し替える。
+      this.finishTransition();
+      this.resetStyles(this.active);
+      this.active.style.visibility = "visible";
+      this.inactive.style.visibility = "hidden";
+      this.active.srcdoc = html;
+      this.hasRendered = true;
+      return;
+    }
+
+    void this.runWithTransition(html, transition, options.durationMs!, myGen);
+  }
+
+  private async runWithTransition(
+    html: string,
+    transition: PreviewTransition,
+    durationMs: number,
+    myGen: number
+  ): Promise<void> {
+    // 進行中の遷移があれば打ち切る（forwards fill を残さない）。
+    this.finishTransition();
+
+    const outgoing = this.active;
+    const incoming = this.inactive;
+
+    // 前回の遷移のインラインスタイルを両フレームから消してから組み立てる。
+    this.resetStyles(outgoing);
+    this.resetStyles(incoming);
+
+    // 初期フラッシュ防止のため、初期状態（重なり順・clip/opacity）を設定してから
+    // 可視化＆ロードする。重なり順は演出ごとに setup が決める。
+    incoming.style.pointerEvents = "none";
+    incoming.style.visibility = "visible";
+    transition.setup(outgoing, incoming);
+
+    await this.loadSrcdoc(incoming, html);
+    if (this.gen !== myGen) return; // より新しい run に追い越された
+    await nextPaint(); // 最初の 1 フレームを描かせてから遷移する
+    if (this.gen !== myGen) return;
+
+    // 入力/コンソールの宛先を新フレームへ切り替える（id も付け替え）。
+    this.activeIndex ^= 1;
+    incoming.id = "preview-frame";
+    outgoing.removeAttribute("id");
+
+    const anims = transition.run(outgoing, incoming, durationMs);
+    this.transitionAnims = anims;
+    try {
+      await Promise.all(anims.map((a) => a.finished));
+    } catch {
+      /* cancel された場合は無視 */
+    }
+    if (this.gen !== myGen) return; // 追い越された場合は後発の run が片付ける
+    this.transitionAnims = null;
+    this.cleanupAfterTransition(outgoing, incoming, anims);
+    this.hasRendered = true;
+  }
+
+  // 進行中のトランジションを打ち切る（再実行/即時切替の前処理）。
+  // cancel して forwards fill を解除する（次の遷移に効果を持ち越さないため）。
+  private finishTransition(): void {
+    if (this.transitionAnims) {
+      this.transitionAnims.forEach((a) => a.cancel());
+      this.transitionAnims = null;
+    }
+  }
+
+  // フレームの遷移用インラインスタイルを中立に戻す（visibility は触らない）。
+  private resetStyles(frame: HTMLIFrameElement): void {
+    frame.style.opacity = "";
+    frame.style.transform = "";
+    frame.style.clipPath = "";
+    frame.style.zIndex = "";
+  }
+
+  // 遷移後の後始末: アニメーションの forwards fill を解除し、旧フレームを停止・隠す。
+  private cleanupAfterTransition(
+    outgoing: HTMLIFrameElement,
+    incoming: HTMLIFrameElement,
+    anims: Animation[]
+  ): void {
+    // forwards fill を解除（clip/opacity 等を次回の遷移へ持ち越さない）。
+    anims.forEach((a) => a.cancel());
+
+    // 新フレームを通常表示の中立状態へ。
+    this.resetStyles(incoming);
+    incoming.style.pointerEvents = "";
+    incoming.style.visibility = "visible";
+
+    // 旧フレームは停止して隠す。
+    this.resetStyles(outgoing);
+    outgoing.srcdoc = "";
+    outgoing.style.pointerEvents = "";
+    outgoing.style.visibility = "hidden";
+  }
+
+  private loadSrcdoc(frame: HTMLIFrameElement, html: string): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        frame.removeEventListener("load", finish);
+        resolve();
+      };
+      frame.addEventListener("load", finish);
+      frame.srcdoc = html;
+      // load が来ないケースのフォールバック。
+      window.setTimeout(finish, 1500);
+    });
   }
 
   stop(): void {
-    this.iframe.srcdoc = "";
+    this.finishTransition();
+    this.active.srcdoc = "";
   }
 
   // 入力ブリッジのリスナを解除し iframe を取り除く。
   // 現状は単一ライフサイクルだが、Preview を再生成可能にした際の leak を防ぐ。
   dispose(): void {
     this.bridgeController.abort();
-    this.iframe.remove();
+    this.frames.forEach((f) => f.remove());
   }
 }

@@ -6,6 +6,23 @@
 
 export type AudioSourceKind = "mic" | "tab";
 
+// タブ/システム音声の取得（getDisplayMedia + audio）は Chromium 系のみ実用的。
+// Firefox / Safari は getDisplayMedia の音声トラックを返さないため、UI 側で
+// 「タブ音声」を選べないようにする判定に使う。
+export function supportsTabAudio(): boolean {
+  const uaData = (
+    navigator as Navigator & {
+      userAgentData?: { brands?: { brand: string }[] };
+    }
+  ).userAgentData;
+  if (uaData?.brands?.length) {
+    return uaData.brands.some((b) => /Chromium/i.test(b.brand));
+  }
+  // userAgentData 非対応（Firefox/Safari 等）は UA 文字列でフォールバック判定。
+  const ua = navigator.userAgent;
+  return /Chrom(e|ium)/.test(ua) && !/Firefox/.test(ua);
+}
+
 export interface AudioEngineCallbacks {
   // ビート検出時。intensity は 0..1（ベースライン超過の強さ）。
   onBeat?: (intensity: number) => void;
@@ -110,8 +127,8 @@ export class AudioEngine {
       stream.getTracks().forEach((t) => t.stop());
       const msg =
         source === "tab"
-          ? "タブ音声が共有されていません。共有ダイアログで「タブの音声を共有」にチェックしてください。"
-          : "マイクの音声トラックを取得できませんでした。";
+          ? "No tab audio shared. Enable “Share tab audio” in the dialog."
+          : "Couldn't get the microphone audio track.";
       cb.onError?.(msg);
       throw new Error(msg);
     }
@@ -170,15 +187,15 @@ export class AudioEngine {
     const name = (e as { name?: string })?.name;
     if (name === "NotAllowedError" || name === "SecurityError") {
       return source === "mic"
-        ? "マイクの使用が許可されませんでした。"
-        : "タブ音声の共有がキャンセル/拒否されました。";
+        ? "Microphone permission denied."
+        : "Tab audio sharing was canceled or denied.";
     }
     if (name === "NotFoundError") {
-      return "利用可能なマイクが見つかりませんでした。";
+      return "No microphone found.";
     }
     return source === "mic"
-      ? "マイクを開始できませんでした。"
-      : "タブ音声を開始できませんでした。";
+      ? "Couldn't start the microphone."
+      : "Couldn't start tab audio.";
   }
 
   private loop(cb: AudioEngineCallbacks): void {

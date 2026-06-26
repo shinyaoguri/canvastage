@@ -27,7 +27,7 @@ test.describe("audio reactive beat visualizer", () => {
 
     await page.click("#settings-btn");
     // Audio セクションはアコーディオンで既定折りたたみ。まず展開する。
-    await page.click(".settings-group-toggle");
+    await page.click('button[aria-controls="settings-group-audio"]');
     // フラッシュ中はオーバーレイで要素が不安定になり .check() が二度押しに
     // なりうるため、単発 click で操作して結果状態を検証する。
     await page.locator("#audio-enable").click();
@@ -37,7 +37,7 @@ test.describe("audio reactive beat visualizer", () => {
       /beat-frame-flash/,
       { timeout: 10000 }
     );
-    await expect(page.locator(".audio-status")).toHaveText(/オン/);
+    await expect(page.locator(".audio-status")).toHaveText(/^On/);
     await expect(page.locator("#audio-enable")).toBeChecked();
 
     // OFF に戻すとアクティブ解除。
@@ -45,6 +45,6 @@ test.describe("audio reactive beat visualizer", () => {
     await expect(page.locator("#beat-overlay")).not.toHaveClass(
       /beat-frame-flash/
     );
-    await expect(page.locator(".audio-status")).toHaveText(/オフ/);
+    await expect(page.locator(".audio-status")).toHaveText(/Off/);
   });
 });

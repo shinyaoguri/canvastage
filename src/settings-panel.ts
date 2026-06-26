@@ -8,6 +8,14 @@ import {
 import { clearToken as clearGithubToken } from "./github-auth";
 import { clearToken as clearOpenProcessingToken } from "./openprocessing-auth";
 import { PATTERN_OPTIONS } from "./audio/beat-patterns";
+import { supportsTabAudio } from "./audio/audio-engine";
+import { TRANSITION_OPTIONS } from "./transitions";
+
+// タブ音声は Chromium 系のみ対応。非対応環境では選択肢から外す（フールプルーフ）。
+const AUDIO_SOURCE_OPTIONS: { value: string; label: string }[] = [
+  { value: "mic", label: "Mic" },
+  ...(supportsTabAudio() ? [{ value: "tab", label: "Tab audio" }] : []),
+];
 
 interface SettingDef {
   key: keyof EditorSettings;
@@ -333,22 +341,38 @@ const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
+    title: "Transition",
+    settings: [
+      {
+        key: "previewTransition",
+        label: "Type",
+        type: "select",
+        options: TRANSITION_OPTIONS,
+      },
+      {
+        key: "previewTransitionMs",
+        label: "Duration (ms)",
+        type: "range",
+        min: 100,
+        max: 2000,
+        step: 50,
+      },
+    ],
+  },
+  {
     title: "Audio Reactive (beta)",
     id: "audio",
     collapsible: true,
     settings: [
       {
         key: "audioSource",
-        label: "音源",
+        label: "Source",
         type: "select",
-        options: [
-          { value: "mic", label: "マイク" },
-          { value: "tab", label: "タブ音声" },
-        ],
+        options: AUDIO_SOURCE_OPTIONS,
       },
       {
         key: "beatSensitivity",
-        label: "感度",
+        label: "Sensitivity",
         type: "range",
         min: 0,
         max: 1,
@@ -356,7 +380,7 @@ const SETTING_GROUPS: SettingGroup[] = [
       },
       {
         key: "beatBandMinHz",
-        label: "帯域 下限(Hz)",
+        label: "Band min (Hz)",
         type: "range",
         min: 20,
         max: 500,
@@ -364,7 +388,7 @@ const SETTING_GROUPS: SettingGroup[] = [
       },
       {
         key: "beatBandMaxHz",
-        label: "帯域 上限(Hz)",
+        label: "Band max (Hz)",
         type: "range",
         min: 500,
         max: 8000,
@@ -372,7 +396,7 @@ const SETTING_GROUPS: SettingGroup[] = [
       },
       {
         key: "beatFloor",
-        label: "ノイズ床",
+        label: "Noise floor",
         type: "range",
         min: 0,
         max: 0.03,
@@ -380,7 +404,7 @@ const SETTING_GROUPS: SettingGroup[] = [
       },
       {
         key: "beatMinIntervalMs",
-        label: "最小間隔(ms)",
+        label: "Min interval (ms)",
         type: "range",
         min: 60,
         max: 400,
@@ -388,7 +412,7 @@ const SETTING_GROUPS: SettingGroup[] = [
       },
       {
         key: "beatPattern",
-        label: "パターン",
+        label: "Pattern",
         type: "select",
         options: PATTERN_OPTIONS,
       },
@@ -508,11 +532,10 @@ export class SettingsPanel {
       // 有効状態は永続化しない（既定 OFF・ユーザー操作で権限取得）。
       if (group.id === "audio") {
         html += `<div class="settings-row">
-          <label for="audio-enable">ビートに反応</label>
+          <label for="audio-enable">React to beat</label>
           <input type="checkbox" id="audio-enable" class="audio-enable-toggle">
         </div>
-        <p class="audio-status" role="status" aria-live="polite">オフ</p>
-        <p class="audio-note">マイク＝周囲の音／タブ音声＝共有したタブの音。オンにすると権限を求めます。</p>`;
+        <p class="audio-status" role="status" aria-live="polite">Off</p>`;
       }
 
       for (const setting of group.settings) {
@@ -604,6 +627,16 @@ export class SettingsPanel {
   }
 
   private bindEvents(): void {
+    // 折りたたみ群（アコーディオン）の開閉
+    this.panel.querySelectorAll(".settings-group-toggle").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const groupEl = btn.closest(".settings-group");
+        if (!groupEl) return;
+        const collapsed = groupEl.classList.toggle("collapsed");
+        btn.setAttribute("aria-expanded", String(!collapsed));
+      });
+    });
+
     // 入力変更（range, text, color）
     this.panel
       .querySelectorAll("input:not([type='checkbox'])")
@@ -736,16 +769,6 @@ export class SettingsPanel {
             trigger.focus();
           }
         });
-      });
-    });
-
-    // 折りたたみ群（アコーディオン）の開閉
-    this.panel.querySelectorAll(".settings-group-toggle").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const groupEl = btn.closest(".settings-group");
-        if (!groupEl) return;
-        const collapsed = groupEl.classList.toggle("collapsed");
-        btn.setAttribute("aria-expanded", String(!collapsed));
       });
     });
 

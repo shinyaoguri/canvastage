@@ -11,6 +11,7 @@ import { ShareButton } from "./share";
 import { OpenProcessingButton } from "./openprocessing-share";
 import { GistImportButton } from "./gist-import";
 import { AudioReactiveController } from "./audio/audio-reactive";
+import { supportsTabAudio } from "./audio/audio-engine";
 
 type FileType = "html" | "css" | "js";
 
@@ -154,7 +155,13 @@ async function init() {
 
   // 設定を読み込んで適用（SettingsPanel にも渡して IndexedDB の二重読みを避ける）
   const initialSettings = await loadSettings();
+  // 非対応ブラウザでは保存値が "tab" でも実行できないので "mic" に矯正する。
+  if (initialSettings.audioSource === "tab" && !supportsTabAudio()) {
+    initialSettings.audioSource = "mic";
+  }
   applySettings(initialSettings);
+  // 最新の設定値（runCode の切り替え演出など、実行時に参照する用）。
+  let currentSettings = initialSettings;
 
   // ファイル内容を管理（basicsからランダムに初期サンプルを選択）
   const initialFiles = getRandomBasicsSample() ?? { ...DEFAULT_FILES };
@@ -264,7 +271,10 @@ async function init() {
   const runCode = () => {
     snapshot();
     consolePanel.clear();
-    preview.run(files);
+    preview.run(files, {
+      transition: currentSettings.previewTransition,
+      durationMs: currentSettings.previewTransitionMs,
+    });
     isRunning = true;
     // 今のコードを実行したので、未実行の変更は無くなった。
     staleSinceRun = false;
@@ -325,21 +335,23 @@ async function init() {
     refractoryMs: initialSettings.beatMinIntervalMs,
   });
   audioReactive.setStatusListener((s) => {
-    const sourceLabel = s.source === "mic" ? "マイク" : "タブ音声";
+    const sourceLabel = s.source === "mic" ? "Mic" : "Tab audio";
     const text =
       s.state === "on"
-        ? `オン（${sourceLabel}）`
+        ? `On (${sourceLabel})`
         : s.state === "starting"
-          ? "開始中…"
+          ? "Starting…"
           : s.state === "error"
-            ? (s.message ?? "開始できませんでした")
-            : "オフ";
+            ? (s.message ?? "Couldn't start")
+            : "Off";
     // on のときだけトグルを ON 表示に同期、それ以外は OFF に戻す。
     settingsPanel.setAudioStatus(text, s.state === "on");
   });
 
-  // 設定変更時にエディタへ反映し、音声の音源/パターンを同期する
+  // 設定変更時にエディタへ反映し、音声の音源/パターンを同期する。
+  // 最新設定は runCode のトランジション参照用にも保持する。
   settingsPanel.setOnChange((settings: EditorSettings) => {
+    currentSettings = settings;
     editor.applySettings(settings);
     audioReactive.setSensitivity(settings.beatSensitivity);
     audioReactive.configure({
