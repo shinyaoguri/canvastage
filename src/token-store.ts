@@ -27,10 +27,24 @@ export function makeTokenStore(tokenKey: string): TokenStore {
       }
     },
     async storeToken(token: string): Promise<void> {
-      await store.put(tokenKey, { token, createdAt: Date.now() });
+      // 永続化はベストエフォート。IndexedDB が使えない環境（Safari プライベート
+      // ブラウジング等）でも、その場の認証フローは成立しているので失敗しても投げず、
+      // getStoredToken と同じ「握り潰す」契約に揃える。
+      try {
+        await store.put(tokenKey, { token, createdAt: Date.now() });
+      } catch (e) {
+        console.warn(
+          "トークンの保存に失敗しました（この環境では永続化されません）",
+          e
+        );
+      }
     },
     async clearToken(): Promise<void> {
-      await store.delete(tokenKey);
+      try {
+        await store.delete(tokenKey);
+      } catch (e) {
+        console.warn("トークンの削除に失敗しました", e);
+      }
     },
   };
 }

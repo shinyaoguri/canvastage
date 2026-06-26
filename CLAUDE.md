@@ -99,11 +99,21 @@ that look wrong but are deliberate:
   `functions/` (uses `tsconfig.functions.json` + `@cloudflare/workers-types`).
   The app's own `tsconfig.json` only covers `src/`, so the OAuth callback needs
   this separate pass.
-- `npm run test:e2e` — Playwright E2E (settings regression). Runs against the
-  **production build** (`build` → `preview`), because the settings-opacity bug
-  it guards only appeared after CSS minification — a dev-server test would have
-  missed it. Tests live in `e2e/`. First run needs `npx playwright install
-  chromium`. Runs in CI as a required check (the `e2e` job in `ci.yml`).
+- `npm test` — Vitest unit tests (`test/`, node env, `vitest.config.ts`). Covers
+  pure logic that's painful to exercise via E2E: `gist.ts` (`parseGistId` /
+  `resolveProjectName` / `fetchGist` branches with mocked `fetch`), `preview.ts`
+  `buildHtml`, and the OAuth inline-script escaper (`functions/api/auth/escape.ts`,
+  extracted from `callback.ts` so it's importable without the Pages runtime).
+  Runs in CI in the `build` job.
+- `npm run test:e2e` — Playwright E2E. Runs against the **production build**
+  (`build` → `preview`), because the settings-opacity bug it guards only appeared
+  after CSS minification — a dev-server test would have missed it. Tests live in
+  `e2e/`. Guards the settings regression **and** the same-origin preview
+  (`preview-origin.spec.ts`: asserts `allow-same-origin` + that `getUserMedia`
+  resolves in the preview frame — the exact thing commit `88374f5` broke; needs
+  the fake-media Chromium flags in `playwright.config.ts`). First run needs `npx
+  playwright install chromium`. Runs in CI as a required check (the `e2e` job in
+  `ci.yml`).
 
 ## Conventions
 

@@ -1,6 +1,7 @@
 import type { Files } from "./preview";
 import { parseGistId, fetchGist, GistError } from "./gist";
-import { showToast } from "./share";
+import { showToast } from "./toast";
+import { activateModalA11y, type ModalA11yHandle } from "./modal-a11y";
 
 export type GistImportHandler = (files: Files, projectName: string) => void;
 
@@ -12,6 +13,7 @@ export class GistImportButton {
   private overlay: HTMLElement;
   private onImport: GistImportHandler | null = null;
   private busy = false;
+  private a11y: ModalA11yHandle | null = null;
 
   constructor(container: HTMLElement) {
     this.btn = document.createElement("button");
@@ -43,17 +45,21 @@ export class GistImportButton {
     this.overlay.innerHTML = this.buildHTML();
     this.bindEvents();
     this.overlay.classList.add("open");
+    const dialog = this.overlay.querySelector<HTMLElement>(".op-modal");
+    this.a11y = dialog ? activateModalA11y(dialog, () => this.close()) : null;
     this.overlay.querySelector<HTMLInputElement>("#import-url-input")?.focus();
   }
 
   private close(): void {
     this.overlay.classList.remove("open");
+    this.a11y?.release();
+    this.a11y = null;
   }
 
   private buildHTML(): string {
-    return `<div class="op-modal">
+    return `<div class="op-modal" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
       <div class="op-modal-header">
-        <span>Gist から取り込む</span>
+        <span id="import-modal-title">Gist から取り込む</span>
         <button class="op-modal-close" aria-label="閉じる">×</button>
       </div>
       <div class="op-modal-content">
@@ -69,6 +75,10 @@ export class GistImportButton {
           <p class="op-note">
             現在開いているコードは置き換えられます。取り込んだスケッチは新規プロジェクト
             扱いになり、既存の Gist / OpenProcessing 連携とは切り離されます。
+          </p>
+          <p class="op-note op-note-warning">
+            ⚠️ 取り込んだコードは実行時にこのアプリと同じ権限で動作します。
+            信頼できる作者の Gist のみ取り込んでください。
           </p>
         </section>
       </div>
@@ -88,7 +98,7 @@ export class GistImportButton {
       .querySelector("#import-run")
       ?.addEventListener("click", () => void this.run(input, status));
     input?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") void this.run(input, status);
+      if (e.key === "Enter" && !e.isComposing) void this.run(input, status);
     });
   }
 

@@ -1,7 +1,8 @@
 import type { Files } from "./preview";
 import { whoami, OpenProcessingError } from "./openprocessing";
 import { getStoredToken, storeToken, clearToken } from "./openprocessing-auth";
-import { showToast } from "./share";
+import { showToast } from "./toast";
+import { activateModalA11y, type ModalA11yHandle } from "./modal-a11y";
 
 const TOKEN_PAGE = "https://openprocessing.org/user/#edit";
 const CREATE_PAGE = "https://openprocessing.org/sketch/create";
@@ -21,6 +22,7 @@ export interface OpenProcessingModalDeps {
 export class OpenProcessingModal {
   private overlay: HTMLElement;
   private deps: OpenProcessingModalDeps;
+  private a11y: ModalA11yHandle | null = null;
 
   constructor(deps: OpenProcessingModalDeps) {
     this.deps = deps;
@@ -37,16 +39,23 @@ export class OpenProcessingModal {
     this.overlay.innerHTML = this.buildHTML(Boolean(token));
     this.bindEvents();
     this.overlay.classList.add("open");
+    const dialog = this.overlay.querySelector<HTMLElement>(".op-modal");
+    this.a11y = dialog ? activateModalA11y(dialog, () => this.close()) : null;
+    this.overlay
+      .querySelector<HTMLElement>(".op-modal-close, input, button")
+      ?.focus();
   }
 
   close(): void {
     this.overlay.classList.remove("open");
+    this.a11y?.release();
+    this.a11y = null;
   }
 
   private buildHTML(hasToken: boolean): string {
-    return `<div class="op-modal">
+    return `<div class="op-modal" role="dialog" aria-modal="true" aria-labelledby="op-modal-title">
       <div class="op-modal-header">
-        <span>OpenProcessing にデプロイ</span>
+        <span id="op-modal-title">OpenProcessing にデプロイ</span>
         <button class="op-modal-close" aria-label="閉じる">×</button>
       </div>
       <div class="op-modal-content">
@@ -122,7 +131,8 @@ export class OpenProcessingModal {
         void this.saveToken(input, status);
       });
     input?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") void this.saveToken(input, status);
+      if (e.key === "Enter" && !e.isComposing)
+        void this.saveToken(input, status);
     });
 
     this.overlay

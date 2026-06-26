@@ -60,8 +60,15 @@ function makeToolbarButton(opts: {
   const btn = document.createElement("button");
   btn.id = opts.id;
   btn.className = "toolbar-btn";
-  if (opts.title) btn.title = opts.title;
+  if (opts.title) {
+    btn.title = opts.title;
+    // アイコンのみのボタンはスクリーンリーダーに「ボタン」としか読まれないため、
+    // title と同じ文言を必ずアクセシブル名として与える。
+    btn.setAttribute("aria-label", opts.title);
+  }
   btn.innerHTML = opts.svg;
+  // 装飾アイコンは支援技術から隠す（ラベルは aria-label が担う）。
+  btn.querySelector("svg")?.setAttribute("aria-hidden", "true");
   if (opts.onClick) btn.onclick = opts.onClick;
   return btn;
 }
@@ -81,12 +88,17 @@ function createTabBar(
 ): { element: HTMLElement; buttons: Record<FileType, HTMLButtonElement> } {
   const tabs = document.createElement("div");
   tabs.id = "file-tabs";
+  tabs.setAttribute("role", "tablist");
+  tabs.setAttribute("aria-label", "編集するファイル");
   const buttons = {} as Record<FileType, HTMLButtonElement>;
 
   (["html", "css", "js"] as FileType[]).forEach((type) => {
     const btn = document.createElement("button");
     btn.textContent = TAB_LABELS[type];
-    btn.className = type === currentFile ? "active" : "";
+    const active = type === currentFile;
+    btn.className = active ? "active" : "";
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", String(active));
     btn.onclick = () => onSelect(type);
     tabs.appendChild(btn);
     buttons[type] = btn;
@@ -106,6 +118,7 @@ function createToolbar(
     makeToolbarButton({
       id: "samples-btn",
       svg: ICONS.samples,
+      title: "サンプル",
       onClick: handlers.onSamples,
     })
   );
@@ -113,6 +126,7 @@ function createToolbar(
     makeToolbarButton({
       id: "settings-btn",
       svg: ICONS.settings,
+      title: "設定",
       onClick: handlers.onSettings,
     })
   );
@@ -120,12 +134,13 @@ function createToolbar(
     makeToolbarButton({
       id: "fullscreen-btn",
       svg: ICONS.fullscreen,
+      title: "全画面表示",
       onClick: toggleFullscreen,
     })
   );
   const newProjectBtn = makeToolbarButton({
     id: "new-project-btn",
-    title: "New Project",
+    title: "新規プロジェクト",
     svg: ICONS.newProject,
   });
   app.appendChild(newProjectBtn);
@@ -189,9 +204,18 @@ async function init() {
   let isRunning = false;
   // 最後の実行以降にコードが編集されたか（実行中の表示が古いことを示す）。
   let staleSinceRun = false;
+  // 実行ショートカットの修飾キー表記を OS に合わせる（Mac は ⌘、それ以外は Ctrl）。
+  const isMac = navigator.platform.toUpperCase().includes("MAC");
+  const RUN_LABEL = `実行 (${isMac ? "⌘" : "Ctrl"}+Enter)`;
+  const STOP_LABEL = "停止";
+  // title と aria-label を同時に更新する（アイコンのみのボタンの名前を保つ）。
+  const setBtnLabel = (btn: HTMLButtonElement, text: string) => {
+    btn.title = text;
+    btn.setAttribute("aria-label", text);
+  };
   const runStopBtn = makeToolbarButton({
     id: "run-stop-btn",
-    title: "Run (⌘+Enter)",
+    title: RUN_LABEL,
     svg: ICONS.play,
   });
   projectBar.appendChild(runStopBtn);
@@ -206,6 +230,7 @@ async function init() {
   projectNameInput.type = "text";
   projectNameInput.value = shareButton.getProjectName();
   projectNameInput.spellcheck = false;
+  projectNameInput.setAttribute("aria-label", "プロジェクト名");
   projectNameInput.addEventListener("input", () => {
     shareButton.setProjectName(projectNameInput.value);
   });
@@ -228,8 +253,11 @@ async function init() {
   // プレビュー
   const preview = new Preview(app);
 
-  // コンソールパネル
-  const consolePanel = new ConsolePanel(app);
+  // コンソールパネル（メッセージはプレビュー iframe からのもののみ受け付ける）
+  const consolePanel = new ConsolePanel(
+    app,
+    (source) => source === preview.getContentWindow()
+  );
 
   // 実行関数
   const runCode = () => {
@@ -240,7 +268,8 @@ async function init() {
     // 今のコードを実行したので、未実行の変更は無くなった。
     staleSinceRun = false;
     runStopBtn.innerHTML = ICONS.stop;
-    runStopBtn.title = "Stop";
+    runStopBtn.querySelector("svg")?.setAttribute("aria-hidden", "true");
+    setBtnLabel(runStopBtn, STOP_LABEL);
     updateRunStale();
     // Gist 作成済みなら、実行のたびに（変更があれば）自動更新する
     shareButton.scheduleAutoSave();
@@ -250,7 +279,8 @@ async function init() {
     preview.stop();
     isRunning = false;
     runStopBtn.innerHTML = ICONS.play;
-    runStopBtn.title = "Run (⌘+Enter)";
+    runStopBtn.querySelector("svg")?.setAttribute("aria-hidden", "true");
+    setBtnLabel(runStopBtn, RUN_LABEL);
     // 停止中は「実行中の表示が古い」概念が無いのでドットを消す。
     updateRunStale();
   };
@@ -323,7 +353,9 @@ async function init() {
 
     // タブのアクティブ状態を更新
     tabButtons[currentFile].className = "";
+    tabButtons[currentFile].setAttribute("aria-selected", "false");
     tabButtons[type].className = "active";
+    tabButtons[type].setAttribute("aria-selected", "true");
 
     // エディタの内容と言語を切り替え
     currentFile = type;

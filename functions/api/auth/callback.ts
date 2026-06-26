@@ -1,3 +1,5 @@
+import { escapeForInlineScript } from "./escape";
+
 interface Env {
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
@@ -34,14 +36,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     error_description?: string;
   };
 
-  // インラインスクリプトに埋め込む文字列を安全にシリアライズする。
-  // JSON.stringify は `</script>` や U+2028/U+2029 をエスケープしないため、
-  // 外部由来の値（state, error_description）をそのまま埋め込むと XSS になる。
-  const safe = (value: string): string =>
-    JSON.stringify(value)
-      .replace(/</g, "\\u003c")
-      .replace(/\u2028/g, "\\u2028")
-      .replace(/\u2029/g, "\\u2029");
+  // インラインスクリプトに埋め込む外部由来の値を安全にエスケープする。
+  const safe = escapeForInlineScript;
 
   if (tokenData.error || !tokenData.access_token) {
     const errorMsg =

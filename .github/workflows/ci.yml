@@ -44,6 +44,9 @@ jobs:
       - name: Typecheck Pages Functions
         run: npm run typecheck:functions
 
+      - name: Unit tests (vitest)
+        run: npm test
+
       - name: Build (typecheck + bundle)
         run: npm run build
 

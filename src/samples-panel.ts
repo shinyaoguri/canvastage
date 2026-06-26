@@ -122,13 +122,31 @@ export class SamplesPanel {
     }
   }
 
+  private opener: HTMLElement | null = null;
+  private onEsc = (e: KeyboardEvent) => {
+    if (e.key === "Escape") this.close();
+  };
+
   toggle(): void {
-    this.isOpen = !this.isOpen;
-    this.panel.classList.toggle("open", this.isOpen);
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  open(): void {
+    if (this.isOpen) return;
+    this.isOpen = true;
+    this.opener = document.activeElement as HTMLElement | null;
+    this.panel.classList.add("open");
+    document.addEventListener("keydown", this.onEsc);
+    this.panel.querySelector<HTMLElement>(".samples-close")?.focus();
   }
 
   close(): void {
+    if (!this.isOpen) return;
     this.isOpen = false;
     this.panel.classList.remove("open");
+    document.removeEventListener("keydown", this.onEsc);
+    this.opener?.focus?.();
+    this.opener = null;
   }
 }

@@ -251,7 +251,7 @@ function injectBefore(closingTag: "head" | "body", snippet: string) {
       : html + snippet;
 }
 
-function buildHtml(files: Files): string {
+export function buildHtml(files: Files): string {
   let html = files.html;
 
   const styleTag = `<style>\n${files.css}\n</style>`;
@@ -287,6 +287,8 @@ function buildHtml(files: Files): string {
 
 export class Preview {
   private iframe: HTMLIFrameElement;
+  // 入力ブリッジで document/window に張るリスナをまとめて外せるようにする。
+  private bridgeController = new AbortController();
 
   constructor(container: HTMLElement) {
     this.iframe = document.createElement("iframe");
@@ -326,6 +328,7 @@ export class Preview {
   }
 
   private setupInputBridge(): void {
+    const signal = this.bridgeController.signal;
     const post = (data: Record<string, unknown>) => {
       if (!this.iframe.contentWindow) return;
       this.iframe.contentWindow.postMessage(data, "*");
@@ -341,18 +344,32 @@ export class Preview {
         button: e.button,
       });
     };
-    document.addEventListener("mousemove", (e) =>
-      sendMouseEvent(e, "mousemove")
+    document.addEventListener(
+      "mousemove",
+      (e) => sendMouseEvent(e, "mousemove"),
+      {
+        signal,
+      }
     );
-    document.addEventListener("mousedown", (e) =>
-      sendMouseEvent(e, "mousedown")
+    document.addEventListener(
+      "mousedown",
+      (e) => sendMouseEvent(e, "mousedown"),
+      {
+        signal,
+      }
     );
-    document.addEventListener("mouseup", (e) => sendMouseEvent(e, "mouseup"));
+    document.addEventListener("mouseup", (e) => sendMouseEvent(e, "mouseup"), {
+      signal,
+    });
 
     // ホイールイベント
-    document.addEventListener("wheel", (e) => {
-      post({ type: "wheel", deltaY: e.deltaY });
-    });
+    document.addEventListener(
+      "wheel",
+      (e) => {
+        post({ type: "wheel", deltaY: e.deltaY });
+      },
+      { signal }
+    );
 
     // キーボードイベント（captureフェーズでMonaco Editorより先にキャプチャ）
     const sendKeyEvent = (e: KeyboardEvent, eventType: string) => {
@@ -363,8 +380,14 @@ export class Preview {
         keyCode: e.keyCode,
       });
     };
-    window.addEventListener("keydown", (e) => sendKeyEvent(e, "keydown"), true);
-    window.addEventListener("keyup", (e) => sendKeyEvent(e, "keyup"), true);
+    window.addEventListener("keydown", (e) => sendKeyEvent(e, "keydown"), {
+      capture: true,
+      signal,
+    });
+    window.addEventListener("keyup", (e) => sendKeyEvent(e, "keyup"), {
+      capture: true,
+      signal,
+    });
 
     // ウィンドウリサイズ
     const sendResize = () => {
@@ -374,7 +397,7 @@ export class Preview {
         height: window.innerHeight,
       });
     };
-    window.addEventListener("resize", sendResize);
+    window.addEventListener("resize", sendResize, { signal });
     // 初期サイズも送信
     sendResize();
 
@@ -387,13 +410,30 @@ export class Preview {
       }));
       post({ type: "touch", eventType, touches });
     };
-    document.addEventListener("touchstart", (e) =>
-      sendTouchEvent(e, "touchstart")
+    document.addEventListener(
+      "touchstart",
+      (e) => sendTouchEvent(e, "touchstart"),
+      { signal }
     );
-    document.addEventListener("touchmove", (e) =>
-      sendTouchEvent(e, "touchmove")
+    document.addEventListener(
+      "touchmove",
+      (e) => sendTouchEvent(e, "touchmove"),
+      {
+        signal,
+      }
     );
-    document.addEventListener("touchend", (e) => sendTouchEvent(e, "touchend"));
+    document.addEventListener(
+      "touchend",
+      (e) => sendTouchEvent(e, "touchend"),
+      {
+        signal,
+      }
+    );
+  }
+
+  // コンソールパネルが postMessage の送信元を検証するために使う。
+  getContentWindow(): Window | null {
+    return this.iframe.contentWindow;
   }
 
   run(files: Files): void {
@@ -402,5 +442,12 @@ export class Preview {
 
   stop(): void {
     this.iframe.srcdoc = "";
+  }
+
+  // 入力ブリッジのリスナを解除し iframe を取り除く。
+  // 現状は単一ライフサイクルだが、Preview を再生成可能にした際の leak を防ぐ。
+  dispose(): void {
+    this.bridgeController.abort();
+    this.iframe.remove();
   }
 }

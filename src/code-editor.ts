@@ -245,6 +245,9 @@ export function createEditor(
   // 物理 Ctrl を拾わないため、keydown のメタ/コントロール修飾を直接見て、全OSで
   // ⌘・Ctrl どちらの Enter でも実行できるようにする（重複発火しない単一経路）。
   editor.onKeyDown((e) => {
+    // IME 変換中（日本語入力など）の Enter は候補確定なので実行しない。
+    // isComposing / keyCode 229 のいずれかで変換中を判定する。
+    if (e.browserEvent.isComposing || e.browserEvent.keyCode === 229) return;
     if (e.keyCode === monaco.KeyCode.Enter && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       e.stopPropagation();

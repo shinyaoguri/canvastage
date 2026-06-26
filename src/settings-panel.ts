@@ -349,9 +349,13 @@ export class SettingsPanel {
     // ため、document へのリスナーはここで一度だけ登録してリークを防ぐ（panel 要素
     // は再描画されても同一インスタンスのまま）。
     document.addEventListener("click", () => {
-      this.panel
-        .querySelectorAll(".custom-select.open")
-        .forEach((d) => d.classList.remove("open"));
+      this.panel.querySelectorAll(".custom-select.open").forEach((d) => {
+        d.classList.remove("open");
+        d.querySelector(".custom-select-trigger")?.setAttribute(
+          "aria-expanded",
+          "false"
+        );
+      });
     });
 
     this.bindEvents();
@@ -393,11 +397,18 @@ export class SettingsPanel {
 
       for (const setting of group.settings) {
         const value = this.settings[setting.key];
+        const inputId = `set-${setting.key}`;
+        const labelId = `setlabel-${setting.key}`;
+        // select はカスタムドロップダウン（非フォーム要素）なので for ではなく
+        // aria-labelledby で関連付ける。それ以外は for/id で関連付ける。
+        const labelAttrs =
+          setting.type === "select" ? `id="${labelId}"` : `for="${inputId}"`;
         html += `<div class="settings-row">
-          <label>${setting.label}</label>`;
+          <label ${labelAttrs}>${setting.label}</label>`;
 
         if (setting.type === "range") {
           html += `<input type="range"
+            id="${inputId}"
             data-key="${setting.key}"
             min="${setting.min}"
             max="${setting.max}"
@@ -405,29 +416,34 @@ export class SettingsPanel {
             value="${value}">
           <span class="settings-value">${value}</span>`;
         } else if (setting.type === "color") {
-          html += `<input type="color" data-key="${setting.key}" value="${value}">`;
+          html += `<input type="color" id="${inputId}" data-key="${setting.key}" value="${value}">`;
         } else if (setting.type === "select" && setting.options) {
-          // カスタムドロップダウン
+          // カスタムドロップダウン（フォントは各オプションを実フォントで描くため
+          // native select には置き換えられない）。listbox パターンで AT 対応する。
           const currentOpt = setting.options.find((o) => o.value === value);
           const currentLabel = currentOpt?.label || "";
           const isFontSelect = setting.key === "fontFamily";
           const fontStyle = isFontSelect ? `style="font-family: ${value}"` : "";
           html += `<div class="custom-select" data-key="${setting.key}" data-font="${isFontSelect}">
-            <div class="custom-select-trigger" ${fontStyle}>${currentLabel}</div>
-            <div class="custom-select-options">`;
+            <div class="custom-select-trigger" role="combobox" tabindex="0"
+              aria-haspopup="listbox" aria-expanded="false" aria-labelledby="${labelId}"
+              ${fontStyle}>${currentLabel}</div>
+            <div class="custom-select-options" role="listbox" aria-labelledby="${labelId}">`;
           for (const opt of setting.options) {
-            const selected = opt.value === value ? "selected" : "";
+            const isSel = opt.value === value;
+            const selected = isSel ? "selected" : "";
             const optFontStyle = isFontSelect
               ? `style="font-family: ${opt.value}"`
               : "";
-            html += `<div class="custom-select-option ${selected}" data-value="${opt.value}" ${optFontStyle}>${opt.label}</div>`;
+            html += `<div class="custom-select-option ${selected}" role="option"
+              aria-selected="${isSel}" tabindex="-1" data-value="${opt.value}" ${optFontStyle}>${opt.label}</div>`;
           }
           html += `</div></div>`;
         } else if (setting.type === "checkbox") {
           const checked = value ? "checked" : "";
-          html += `<input type="checkbox" data-key="${setting.key}" ${checked}>`;
+          html += `<input type="checkbox" id="${inputId}" data-key="${setting.key}" ${checked}>`;
         } else {
-          html += `<input type="text" data-key="${setting.key}" value="${value}">`;
+          html += `<input type="text" id="${inputId}" data-key="${setting.key}" value="${value}">`;
         }
 
         html += `</div>`;
@@ -499,7 +515,7 @@ export class SettingsPanel {
       });
     });
 
-    // カスタムドロップダウン
+    // カスタムドロップダウン（listbox パターン: マウス + キーボード両対応）
     this.panel.querySelectorAll(".custom-select").forEach((dropdown) => {
       const trigger = dropdown.querySelector(
         ".custom-select-trigger"
@@ -507,44 +523,95 @@ export class SettingsPanel {
       const options = dropdown.querySelector(
         ".custom-select-options"
       ) as HTMLElement;
+      const optionEls = Array.from(
+        options.querySelectorAll<HTMLElement>(".custom-select-option")
+      );
+
+      const setOpen = (open: boolean) => {
+        dropdown.classList.toggle("open", open);
+        trigger.setAttribute("aria-expanded", String(open));
+      };
+      const close = () => setOpen(false);
+      const openAndFocus = () => {
+        // 他のドロップダウンを閉じてから開き、選択中の項目へフォーカスする。
+        this.panel.querySelectorAll(".custom-select.open").forEach((d) => {
+          if (d !== dropdown) {
+            d.classList.remove("open");
+            d.querySelector(".custom-select-trigger")?.setAttribute(
+              "aria-expanded",
+              "false"
+            );
+          }
+        });
+        setOpen(true);
+        (
+          optionEls.find((o) => o.classList.contains("selected")) ??
+          optionEls[0]
+        )?.focus();
+      };
+
+      const selectOption = (option: HTMLElement) => {
+        const key = (dropdown as HTMLElement).dataset
+          .key as keyof EditorSettings;
+        const value = option.dataset.value as string;
+        const label = option.textContent || "";
+        const isFontSelect = (dropdown as HTMLElement).dataset.font === "true";
+
+        // 選択状態を更新（class と aria-selected を同期）
+        optionEls.forEach((o) => {
+          o.classList.remove("selected");
+          o.setAttribute("aria-selected", "false");
+        });
+        option.classList.add("selected");
+        option.setAttribute("aria-selected", "true");
+
+        // トリガーのテキストを更新
+        trigger.textContent = label;
+        if (isFontSelect) trigger.style.fontFamily = value;
+
+        // 設定を更新
+        (this.settings as unknown as Record<string, string | number>)[key] =
+          value;
+        this.notifyChange();
+
+        close();
+        trigger.focus();
+      };
 
       trigger?.addEventListener("click", (e) => {
         e.stopPropagation();
-        // 他のドロップダウンを閉じる
-        this.panel.querySelectorAll(".custom-select.open").forEach((d) => {
-          if (d !== dropdown) d.classList.remove("open");
-        });
-        dropdown.classList.toggle("open");
+        if (dropdown.classList.contains("open")) close();
+        else openAndFocus();
       });
 
-      options?.querySelectorAll(".custom-select-option").forEach((option) => {
-        option.addEventListener("click", () => {
-          const key = (dropdown as HTMLElement).dataset
-            .key as keyof EditorSettings;
-          const value = (option as HTMLElement).dataset.value as string;
-          const label = option.textContent || "";
-          const isFontSelect =
-            (dropdown as HTMLElement).dataset.font === "true";
+      trigger?.addEventListener("keydown", (e) => {
+        const ke = e as KeyboardEvent;
+        if (ke.key === "Enter" || ke.key === " " || ke.key === "ArrowDown") {
+          ke.preventDefault();
+          openAndFocus();
+        } else if (ke.key === "Escape") {
+          close();
+        }
+      });
 
-          // 選択状態を更新
-          options
-            .querySelectorAll(".custom-select-option")
-            .forEach((o) => o.classList.remove("selected"));
-          option.classList.add("selected");
-
-          // トリガーのテキストを更新
-          trigger.textContent = label;
-          if (isFontSelect) {
-            trigger.style.fontFamily = value;
+      optionEls.forEach((option, i) => {
+        option.addEventListener("click", () => selectOption(option));
+        option.addEventListener("keydown", (e) => {
+          const ke = e as KeyboardEvent;
+          if (ke.key === "Enter" || ke.key === " ") {
+            ke.preventDefault();
+            selectOption(option);
+          } else if (ke.key === "ArrowDown") {
+            ke.preventDefault();
+            optionEls[Math.min(i + 1, optionEls.length - 1)]?.focus();
+          } else if (ke.key === "ArrowUp") {
+            ke.preventDefault();
+            optionEls[Math.max(i - 1, 0)]?.focus();
+          } else if (ke.key === "Escape") {
+            ke.preventDefault();
+            close();
+            trigger.focus();
           }
-
-          // 設定を更新
-          (this.settings as unknown as Record<string, string | number>)[key] =
-            value;
-          this.notifyChange();
-
-          // ドロップダウンを閉じる
-          dropdown.classList.remove("open");
         });
       });
     });
@@ -565,8 +632,8 @@ export class SettingsPanel {
       ?.addEventListener("click", (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
         btn.disabled = true;
-        void Promise.all([clearGithubToken(), clearOpenProcessingToken()]).then(
-          () => {
+        void Promise.all([clearGithubToken(), clearOpenProcessingToken()])
+          .then(() => {
             btn.textContent = "削除しました ✓";
             // 接続ドット等を実態に同期させる
             this.onTokensCleared?.();
@@ -574,8 +641,15 @@ export class SettingsPanel {
               btn.textContent = "保存したトークンを削除";
               btn.disabled = false;
             }, 2000);
-          }
-        );
+          })
+          .catch(() => {
+            // 削除に失敗してもボタンが永久に disabled のまま残らないようにする
+            btn.textContent = "削除に失敗しました";
+            setTimeout(() => {
+              btn.textContent = "保存したトークンを削除";
+              btn.disabled = false;
+            }, 2000);
+          });
       });
 
     // 閉じる
@@ -587,12 +661,32 @@ export class SettingsPanel {
   }
 
   toggle(): void {
-    this.isOpen = !this.isOpen;
-    this.panel.classList.toggle("open", this.isOpen);
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  private opener: HTMLElement | null = null;
+  private onEsc = (e: KeyboardEvent) => {
+    if (e.key === "Escape") this.close();
+  };
+
+  open(): void {
+    if (this.isOpen) return;
+    this.isOpen = true;
+    this.opener = document.activeElement as HTMLElement | null;
+    this.panel.classList.add("open");
+    document.addEventListener("keydown", this.onEsc);
+    // パネル先頭の操作子（閉じるボタン）へフォーカスを移す。
+    this.panel.querySelector<HTMLElement>(".settings-close")?.focus();
   }
 
   close(): void {
+    if (!this.isOpen) return;
     this.isOpen = false;
     this.panel.classList.remove("open");
+    document.removeEventListener("keydown", this.onEsc);
+    // 開く前の要素（多くは設定ボタン）へフォーカスを戻す。
+    this.opener?.focus?.();
+    this.opener = null;
   }
 }
