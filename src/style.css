@@ -1408,9 +1408,3 @@ button.settings-group-toggle:hover {
   color: rgba(255, 255, 255, 0.6);
   margin-top: 0.3rem;
 }
-
-.audio-note {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 0.3rem;
-}

@@ -23,7 +23,7 @@ export interface BeatPattern {
 // だけを制御する。
 class FrameFlashPattern implements BeatPattern {
   readonly id = "frame-flash";
-  readonly name = "枠フラッシュ";
+  readonly name = "Frame flash";
 
   private level = 0;
   // 1秒あたりの減衰率（level *= DECAY^(dt/1000)）。小さいほど速く消える。

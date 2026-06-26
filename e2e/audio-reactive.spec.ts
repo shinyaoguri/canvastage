@@ -37,7 +37,7 @@ test.describe("audio reactive beat visualizer", () => {
       /beat-frame-flash/,
       { timeout: 10000 }
     );
-    await expect(page.locator(".audio-status")).toHaveText(/オン/);
+    await expect(page.locator(".audio-status")).toHaveText(/^On/);
     await expect(page.locator("#audio-enable")).toBeChecked();
 
     // OFF に戻すとアクティブ解除。
@@ -45,6 +45,6 @@ test.describe("audio reactive beat visualizer", () => {
     await expect(page.locator("#beat-overlay")).not.toHaveClass(
       /beat-frame-flash/
     );
-    await expect(page.locator(".audio-status")).toHaveText(/オフ/);
+    await expect(page.locator(".audio-status")).toHaveText(/Off/);
   });
 });
