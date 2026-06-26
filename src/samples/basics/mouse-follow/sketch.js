@@ -3,7 +3,7 @@ function setup() {
 }
 
 function draw() {
-  background(20, 20, 30, 25);
+  background(20);
 
   fill(100, 200, 255);
   noStroke();
