@@ -68,6 +68,19 @@ export const EditorSettingsSchema = z.object({
 
   // テーマ
   editorTheme: z.string().default("transparent-dark"),
+
+  // 音声ビート可視化（有効/無効は永続化せず毎回 OFF 始動。音源/パターン/感度を保存）
+  audioSource: z.enum(["mic", "tab"]).default("mic"),
+  beatPattern: z.string().default("frame-flash"),
+  // ビート感度（0=厳しめ / 1=緩め）。閾値スライダーとして UI に出す。
+  beatSensitivity: z.number().min(0).max(1).default(0.6),
+  // 検出帯域(Hz)。下限=キック/ベース寄り、上限=手拍子/スネア寄り。
+  beatBandMinHz: z.number().min(20).max(500).default(30),
+  beatBandMaxHz: z.number().min(500).max(8000).default(4000),
+  // ノイズ床（これ未満のフラックスは無視）。
+  beatFloor: z.number().min(0).max(0.03).default(0.006),
+  // 連続発火を防ぐ最小間隔(ms)。
+  beatMinIntervalMs: z.number().min(60).max(400).default(130),
 });
 
 // 型を自動生成

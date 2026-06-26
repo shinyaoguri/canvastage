@@ -518,6 +518,47 @@ a.settings-commit:hover {
   margin-bottom: 10px;
 }
 
+/* アコーディオン: 見出しボタン */
+button.settings-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  /* .settings-group-title の見た目を踏襲しつつボタン化 */
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+button.settings-group-toggle:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.settings-group-chevron {
+  transition: transform 0.15s ease;
+  font-size: 12px;
+}
+
+/* 閉じているとき: 本体を隠し、シェブロンを回す。下マージンも詰める。 */
+.settings-group.collapsed .settings-group-body {
+  display: none;
+}
+
+.settings-group.collapsed button.settings-group-toggle {
+  margin-bottom: 0;
+}
+
+.settings-group.collapsed .settings-group-chevron {
+  transform: rotate(-90deg);
+}
+
 .settings-row {
   display: flex;
   align-items: center;
@@ -1337,4 +1378,36 @@ a.settings-commit:hover {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ===== 音声ビート可視化（オーバーレイ） =====
+   ウィンドウ全面の固定レイヤ。クリックは透過する。opacity は JS が毎フレーム
+   制御するので transition は付けない（rAF 減衰と競合させない）。 */
+#beat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* 枠フラッシュ: 内側グローでウィンドウの枠が白くボワッと光る。 */
+#beat-overlay.beat-frame-flash {
+  box-shadow:
+    inset 0 0 140px 24px rgba(255, 255, 255, 0.85),
+    inset 0 0 40px 4px rgba(255, 255, 255, 0.6);
+}
+
+/* 設定パネル: 音声セクションの補助テキスト */
+.audio-status {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.3rem;
+}
+
+.audio-note {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 0.3rem;
 }
