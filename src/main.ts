@@ -10,6 +10,7 @@ import { getRandomBasicsSample } from "./samples";
 import { ShareButton } from "./share";
 import { OpenProcessingButton } from "./openprocessing-share";
 import { GistImportButton } from "./gist-import";
+import { AudioReactiveController } from "./audio/audio-reactive";
 
 type FileType = "html" | "css" | "js";
 
@@ -311,9 +312,36 @@ async function init() {
     updateRunStale();
   });
 
-  // 設定変更時にエディタへ反映
+  // 音声ビート可視化コントローラ（既定 OFF・トグルで権限取得）
+  const audioReactive = new AudioReactiveController(
+    app,
+    initialSettings.beatPattern
+  );
+  audioReactive.setStatusListener((s) => {
+    const sourceLabel = s.source === "mic" ? "マイク" : "タブ音声";
+    const text =
+      s.state === "on"
+        ? `オン（${sourceLabel}）`
+        : s.state === "starting"
+          ? "開始中…"
+          : s.state === "error"
+            ? (s.message ?? "開始できませんでした")
+            : "オフ";
+    // on のときだけトグルを ON 表示に同期、それ以外は OFF に戻す。
+    settingsPanel.setAudioStatus(text, s.state === "on");
+  });
+
+  // 設定変更時にエディタへ反映し、音声の音源/パターンを同期する
   settingsPanel.setOnChange((settings: EditorSettings) => {
     editor.applySettings(settings);
+    audioReactive.setPattern(settings.beatPattern);
+    void audioReactive.setSource(settings.audioSource);
+  });
+
+  // 音声トグル: ON で権限取得して開始、OFF で停止
+  settingsPanel.setOnAudioToggle((enabled, settings) => {
+    if (enabled) void audioReactive.enable(settings.audioSource);
+    else audioReactive.disable();
   });
 
   // 設定パネルでトークンを削除したら、両ボタンの接続ドットを消灯させる

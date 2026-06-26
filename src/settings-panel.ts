@@ -7,6 +7,7 @@ import {
 } from "./settings";
 import { clearToken as clearGithubToken } from "./github-auth";
 import { clearToken as clearOpenProcessingToken } from "./openprocessing-auth";
+import { PATTERN_OPTIONS } from "./audio/beat-patterns";
 
 interface SettingDef {
   key: keyof EditorSettings;
@@ -16,6 +17,13 @@ interface SettingDef {
   max?: number;
   step?: number;
   options?: { value: string; label: string }[];
+}
+
+interface SettingGroup {
+  title: string;
+  settings: SettingDef[];
+  // 特殊セクション識別子。"audio" のときは有効化トグル+ステータスを差し込む。
+  id?: string;
 }
 
 const GOOGLE_FONTS = [
@@ -73,7 +81,7 @@ const EDITOR_THEMES = [
   { value: "cyberpunk", label: "Cyberpunk" },
 ];
 
-const SETTING_GROUPS: { title: string; settings: SettingDef[] }[] = [
+const SETTING_GROUPS: SettingGroup[] = [
   {
     title: "Theme",
     settings: [
@@ -322,6 +330,27 @@ const SETTING_GROUPS: { title: string; settings: SettingDef[] }[] = [
       },
     ],
   },
+  {
+    title: "Audio Reactive (beta)",
+    id: "audio",
+    settings: [
+      {
+        key: "audioSource",
+        label: "音源",
+        type: "select",
+        options: [
+          { value: "mic", label: "マイク" },
+          { value: "tab", label: "タブ音声" },
+        ],
+      },
+      {
+        key: "beatPattern",
+        label: "パターン",
+        type: "select",
+        options: PATTERN_OPTIONS,
+      },
+    ],
+  },
 ];
 
 export type SettingsChangeCallback = (settings: EditorSettings) => void;
@@ -333,6 +362,10 @@ export class SettingsPanel {
   private onChange: SettingsChangeCallback | null = null;
   // トークン削除後に接続ドット等を更新させるためのコールバック。
   private onTokensCleared: (() => void) | null = null;
+  // 音声ビート可視化の有効/無効トグル。enabled と現在の設定を渡す。
+  private onAudioToggle:
+    | ((enabled: boolean, settings: EditorSettings) => void)
+    | null = null;
 
   private constructor(container: HTMLElement, settings: EditorSettings) {
     this.settings = settings;
@@ -378,6 +411,24 @@ export class SettingsPanel {
     this.onTokensCleared = callback;
   }
 
+  setOnAudioToggle(
+    callback: (enabled: boolean, settings: EditorSettings) => void
+  ): void {
+    this.onAudioToggle = callback;
+  }
+
+  // コントローラからの状態をパネルへ反映する（ステータス文言 + トグルの見た目）。
+  setAudioStatus(text: string, enabled?: boolean): void {
+    const statusEl = this.panel.querySelector<HTMLElement>(".audio-status");
+    if (statusEl) statusEl.textContent = text;
+    if (enabled !== undefined) {
+      const toggle = this.panel.querySelector<HTMLInputElement>(
+        ".audio-enable-toggle"
+      );
+      if (toggle) toggle.checked = enabled;
+    }
+  }
+
   private notifyChange(): void {
     applySettings(this.settings);
     saveSettings(this.settings).catch(() => {});
@@ -394,6 +445,17 @@ export class SettingsPanel {
     for (const group of SETTING_GROUPS) {
       html += `<div class="settings-group">
         <div class="settings-group-title">${group.title}</div>`;
+
+      // 音声セクションは有効化トグル + ステータスを先頭に差し込む。
+      // 有効状態は永続化しない（既定 OFF・ユーザー操作で権限取得）。
+      if (group.id === "audio") {
+        html += `<div class="settings-row">
+          <label for="audio-enable">ビートに反応</label>
+          <input type="checkbox" id="audio-enable" class="audio-enable-toggle">
+        </div>
+        <p class="audio-status" role="status" aria-live="polite">オフ</p>
+        <p class="audio-note">マイク＝周囲の音／タブ音声＝共有したタブの音。オンにすると権限を求めます。</p>`;
+      }
 
       for (const setting of group.settings) {
         const value = this.settings[setting.key];
@@ -504,16 +566,18 @@ export class SettingsPanel {
         });
       });
 
-    // チェックボックス変更
-    this.panel.querySelectorAll("input[type='checkbox']").forEach((input) => {
-      input.addEventListener("change", (e) => {
-        const target = e.target as HTMLInputElement;
-        const key = target.dataset.key as keyof EditorSettings;
-        (this.settings as unknown as Record<string, boolean>)[key] =
-          target.checked;
-        this.notifyChange();
+    // チェックボックス変更（data-key を持つ設定項目のみ。音声トグルは別扱い）
+    this.panel
+      .querySelectorAll("input[type='checkbox'][data-key]")
+      .forEach((input) => {
+        input.addEventListener("change", (e) => {
+          const target = e.target as HTMLInputElement;
+          const key = target.dataset.key as keyof EditorSettings;
+          (this.settings as unknown as Record<string, boolean>)[key] =
+            target.checked;
+          this.notifyChange();
+        });
       });
-    });
 
     // カスタムドロップダウン（listbox パターン: マウス + キーボード両対応）
     this.panel.querySelectorAll(".custom-select").forEach((dropdown) => {
@@ -615,6 +679,15 @@ export class SettingsPanel {
         });
       });
     });
+
+    // 音声ビート可視化の有効/無効トグル（永続化しないランタイム操作）。
+    // change はユーザー操作なので、ここから権限取得を始めても activation を保てる。
+    this.panel
+      .querySelector(".audio-enable-toggle")
+      ?.addEventListener("change", (e) => {
+        const checked = (e.target as HTMLInputElement).checked;
+        this.onAudioToggle?.(checked, this.settings);
+      });
 
     // リセット
     this.panel

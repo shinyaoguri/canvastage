@@ -68,6 +68,10 @@ export const EditorSettingsSchema = z.object({
 
   // テーマ
   editorTheme: z.string().default("transparent-dark"),
+
+  // 音声ビート可視化（有効/無効は永続化せず毎回 OFF 始動。音源とパターンのみ保存）
+  audioSource: z.enum(["mic", "tab"]).default("mic"),
+  beatPattern: z.string().default("frame-flash"),
 });
 
 // 型を自動生成
