@@ -111,9 +111,11 @@ that look wrong but are deliberate:
   `e2e/`. Guards the settings regression **and** the same-origin preview
   (`preview-origin.spec.ts`: asserts `allow-same-origin` + that `getUserMedia`
   resolves in the preview frame — the exact thing commit `88374f5` broke; needs
-  the fake-media Chromium flags in `playwright.config.ts`). First run needs `npx
-  playwright install chromium`. Runs in CI as a required check (the `e2e` job in
-  `ci.yml`).
+  the fake-media Chromium flags in `playwright.config.ts`) **and** the Monaco
+  language workers (`monaco-worker.spec.ts`: asserts the TS/CSS workers actually
+  boot by expecting error squigglies — a wrong worker entry point can still build
+  and silently kill language features). First run needs `npx playwright install
+  chromium`. Runs in CI as a required check (the `e2e` job in `ci.yml`).
 
 ## Conventions
 

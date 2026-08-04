@@ -1,8 +1,10 @@
 import * as monaco from "monaco-editor";
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
-import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
-import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
+// monaco-editor 0.56.0 で ESM の公開エントリポイントが整理され、`esm/vs/...` の
+// 深いパスは exports 制約で解決できなくなった。worker は新しい入口から読み込む。
+import editorWorker from "monaco-editor/editor/editor.worker?worker";
+import tsWorker from "monaco-editor/languages/features/typescript/ts.worker?worker";
+import cssWorker from "monaco-editor/languages/features/css/css.worker?worker";
+import htmlWorker from "monaco-editor/languages/features/html/html.worker?worker";
 import { EditorSettings } from "./settings";
 
 // Monaco Editor Worker の設定
