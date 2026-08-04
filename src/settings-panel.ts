@@ -443,8 +443,7 @@ export class SettingsPanel {
   private onTokensCleared: (() => void) | null = null;
   // 音声ビート可視化の有効/無効トグル。enabled と現在の設定を渡す。
   private onAudioToggle:
-    | ((enabled: boolean, settings: EditorSettings) => void)
-    | null = null;
+    ((enabled: boolean, settings: EditorSettings) => void) | null = null;
 
   private constructor(container: HTMLElement, settings: EditorSettings) {
     this.settings = settings;
