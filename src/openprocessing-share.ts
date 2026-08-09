@@ -13,6 +13,7 @@ type State = "idle" | "deploying";
 //   トークン有 + write権限有 → 直接デプロイ（作成 or 更新）
 export class OpenProcessingButton {
   private btn: HTMLButtonElement;
+  private container: HTMLElement;
   private state: State = "idle";
   private getFiles: () => Files;
   private getProjectName: () => string;
@@ -24,8 +25,12 @@ export class OpenProcessingButton {
   constructor(
     container: HTMLElement,
     getFiles: () => Files,
-    getProjectName: () => string
+    getProjectName: () => string,
+    // 既定は非表示（設定 showOpenProcessingButton）。初期値を受け取ることで
+    // 「一瞬出てから消える」ちらつきを避ける。
+    visible = false
   ) {
+    this.container = container;
     this.getFiles = getFiles;
     this.getProjectName = getProjectName;
     this.modal = new OpenProcessingModal({
@@ -47,9 +52,17 @@ export class OpenProcessingButton {
     </svg>`;
     this.btn.onclick = () => void this.handleClick();
     container.appendChild(this.btn);
+    this.setVisible(visible);
 
     // 起動時に保存済みトークンの有無で接続ドットを点灯/消灯する。
     void this.refreshAuth();
+  }
+
+  // ツールバーからボタンを出し入れする。ツールバーは right の段数で位置を
+  // 決めているので、単にこのボタンを消すと外側のボタンとの間に穴が空く。
+  // 詰め直しはコンテナのクラス（style.css の .op-deploy-hidden）側で行う。
+  setVisible(visible: boolean): void {
+    this.container.classList.toggle("op-deploy-hidden", !visible);
   }
 
   // 保存済み OpenProcessing トークンの有無を見て接続ドットを更新する。

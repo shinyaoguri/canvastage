@@ -30,6 +30,23 @@ async function setInput(page: Page, key: string, value: string | number) {
   expect(ok, `control input[data-key="${key}"] should exist`).toBe(true);
 }
 
+// チェックボックス設定を切り替え change を発火（range 等の input とは別経路）
+async function setCheckbox(page: Page, key: string, checked: boolean) {
+  const ok = await page.evaluate(
+    ({ key, checked }) => {
+      const el = document.querySelector<HTMLInputElement>(
+        `#settings-panel input[type="checkbox"][data-key="${key}"]`
+      );
+      if (!el) return false;
+      el.checked = checked;
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    },
+    { key, checked }
+  );
+  expect(ok, `checkbox input[data-key="${key}"] should exist`).toBe(true);
+}
+
 // カスタムセレクトのオプションを選択
 async function selectOption(page: Page, key: string, value: string) {
   const ok = await page.evaluate(
@@ -134,6 +151,44 @@ test.describe("settings reflect into the editor (production build)", () => {
     await expect
       .poll(() => computed(page, sel, "color"), { timeout: 4000 })
       .not.toBe(before);
+  });
+
+  // OpenProcessing への直接デプロイは Plus+ 会員の write トークン限定なので、
+  // ボタンは既定で隠す。ツールバーは right の段数で並ぶため、隠したときに
+  // 外側のボタンが詰まって穴が空かないことまで見る。
+  test("OpenProcessing deploy button is hidden by default and toggleable", async ({
+    page,
+  }) => {
+    await openSettings(page);
+    const opBtn = page.locator("#openprocessing-btn");
+    await expect(opBtn).toBeHidden();
+
+    const importRightHidden = await computed(page, "#import-btn", "right");
+
+    await setCheckbox(page, "showOpenProcessingButton", true);
+    await expect(opBtn).toBeVisible();
+    const importRightShown = await computed(page, "#import-btn", "right");
+    expect(importRightShown).not.toBe(importRightHidden);
+
+    await setCheckbox(page, "showOpenProcessingButton", false);
+    await expect(opBtn).toBeHidden();
+    expect(await computed(page, "#import-btn", "right")).toBe(
+      importRightHidden
+    );
+  });
+
+  test("OpenProcessing deploy button stays visible after reload", async ({
+    page,
+  }) => {
+    await openSettings(page);
+    await setCheckbox(page, "showOpenProcessingButton", true);
+    await expect(page.locator("#openprocessing-btn")).toBeVisible();
+
+    await page.reload();
+    await page.waitForSelector(".monaco-editor .line-numbers", {
+      timeout: 20000,
+    });
+    await expect(page.locator("#openprocessing-btn")).toBeVisible();
   });
 
   test("font size slider allows up to 48 and applies", async ({ page }) => {

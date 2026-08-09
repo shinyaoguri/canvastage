@@ -73,6 +73,12 @@ export const EditorSettingsSchema = z.object({
   previewTransition: z.string().default("none"),
   previewTransitionMs: z.number().min(100).max(2000).default(500),
 
+  // OpenProcessing デプロイボタンの表示。API での直接デプロイは Plus+ 会員の
+  // write トークンでしか使えない（CLAUDE.md「Write needs Plus+」）ため、
+  // 大多数のユーザーには押しても手動アップロード案内しか出ない。既定は非表示にし、
+  // 使える人だけがここで出す。
+  showOpenProcessingButton: z.boolean().default(false),
+
   // 音声ビート可視化（有効/無効は永続化せず毎回 OFF 始動。音源/パターン/感度を保存）
   audioSource: z.enum(["mic", "tab"]).default("mic"),
   beatPattern: z.string().default("frame-flash"),
