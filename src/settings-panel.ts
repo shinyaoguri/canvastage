@@ -40,6 +40,8 @@ interface SettingGroup {
   id?: string;
   // true のときアコーディオン（折りたたみ）。既定で閉じた状態で描画する。
   collapsible?: boolean;
+  // 群の先頭に置く補足文（なぜ既定 OFF なのか等）。プレーンテキストのみ。
+  note?: string;
 }
 
 const GOOGLE_FONTS = [
@@ -366,6 +368,17 @@ const SETTING_GROUPS: SettingGroup[] = [
     ],
   },
   {
+    title: "Toolbar",
+    note: "OpenProcessing への直接デプロイは Plus+ 会員の write トークンでのみ使えます。それ以外のアカウントでは手動アップロードの案内しか出ないため、既定では非表示です。",
+    settings: [
+      {
+        key: "showOpenProcessingButton",
+        label: "OpenProcessing Deploy",
+        type: "checkbox",
+      },
+    ],
+  },
+  {
     title: "Audio Reactive (beta)",
     id: "audio",
     collapsible: true,
@@ -537,6 +550,10 @@ export class SettingsPanel {
       } else {
         html += `<div class="settings-group">
           <div class="settings-group-title">${group.title}</div>`;
+      }
+
+      if (group.note) {
+        html += `<p class="settings-group-note">${group.note}</p>`;
       }
 
       // 音声セクションは有効化トグル + ステータスを先頭に差し込む。

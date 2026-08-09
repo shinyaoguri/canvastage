@@ -521,6 +521,14 @@ a.settings-commit:hover {
   margin-bottom: 10px;
 }
 
+/* 群の先頭に置く補足文（SettingGroup.note） */
+.settings-group-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 10px;
+}
+
 /* アコーディオン: 見出しボタン */
 button.settings-group-toggle {
   display: flex;
@@ -743,6 +751,22 @@ button.settings-group-toggle:hover {
 /* 新規プロジェクトボタン（最外） */
 #new-project-btn {
   right: calc(max(0.5rem, var(--editor-padding)) + 6 * var(--toolbar-gap));
+}
+
+/* OpenProcessing デプロイボタンを隠すとき（設定 showOpenProcessingButton は
+   既定 OFF）。ツールバーは right の段数で位置を決めているので、隠すだけだと
+   4 段目に穴が空く。外側の 2 つを 1 段ずつ内側へ詰める。
+   display:none が必要（.toolbar-btn の display:flex が [hidden] に勝つため）。 */
+#app.op-deploy-hidden #openprocessing-btn {
+  display: none;
+}
+
+#app.op-deploy-hidden #import-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 4 * var(--toolbar-gap));
+}
+
+#app.op-deploy-hidden #new-project-btn {
+  right: calc(max(0.5rem, var(--editor-padding)) + 5 * var(--toolbar-gap));
 }
 
 #share-btn.loading svg {

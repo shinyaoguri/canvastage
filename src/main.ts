@@ -194,11 +194,13 @@ async function init() {
   // シェアボタン
   const shareButton = new ShareButton(app, () => ({ ...snapshot() }));
 
-  // OpenProcessing デプロイボタン（GitHub とは独立）
+  // OpenProcessing デプロイボタン（GitHub とは独立）。直接デプロイは Plus+ 会員の
+  // write トークン限定なので、既定は非表示（設定で出す）。
   const openProcessingButton = new OpenProcessingButton(
     app,
     () => ({ ...snapshot() }),
-    () => shareButton.getProjectName()
+    () => shareButton.getProjectName(),
+    initialSettings.showOpenProcessingButton
   );
 
   // Gist 取り込みボタン（onImport は editor 等の生成後に配線する）
@@ -364,6 +366,7 @@ async function init() {
     });
     audioReactive.setPattern(settings.beatPattern);
     void audioReactive.setSource(settings.audioSource);
+    openProcessingButton.setVisible(settings.showOpenProcessingButton);
   });
 
   // 音声トグル: ON で権限取得して開始、OFF で停止

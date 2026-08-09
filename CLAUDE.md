@@ -78,6 +78,15 @@ that look wrong but are deliberate:
   OpenProcessing limitation, not a bug.
 - **Manual deploy only.** Unlike the gist auto-save, OP deploy fires only on the
   button click (avoids burning the paid API rate limit on every run).
+- **The toolbar button is hidden by default.** Since write needs Plus+, the button
+  is a dead end for most visitors — it can only ever open the manual-upload guide.
+  `showOpenProcessingButton` in `src/settings.ts` defaults to `false`; Settings →
+  Toolbar turns it on. This is deliberate, not an oversight — don't make the button
+  visible by default. Note the toolbar places buttons by
+  `right: … + N * var(--toolbar-gap)`, so hiding it must also shift `#import-btn` /
+  `#new-project-btn` one step inward (the `.op-deploy-hidden` rules in
+  `src/style.css`), or a gap opens in the row. Both halves are covered by
+  `e2e/settings.spec.ts`.
 - **List code tabs before writing — never PATCH-then-404.** A 404 from the
   `/code/{title}` endpoint (e.g. PATCHing a tab that doesn't exist yet, like
   `index.html` on a fresh sketch) returns an HTML error page **with no CORS
