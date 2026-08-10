@@ -55,6 +55,30 @@ changed, debounced, skipped on JS syntax error, and silent on success. Loading
 a sample or starting a new project detaches the gist so auto-save can't
 overwrite the previous project. See commit `0328ebe`.
 
+Importing a gist **can** attach too — but only when it is provably yours:
+`gist-import.ts` compares the gist's `owner.login` against your login
+(`getStoredIdentity`, refreshed from `GET /user` and opportunistically cached
+from create/update responses). Everything else — other people's gists, anonymous
+gists, signed-out, or any failure to determine the owner — falls back to a new
+project. Attaching to someone else's gist can't corrupt it (the PATCH 404s), but
+it would show "updating" while silently failing, so ambiguity always resolves to
+*don't attach*.
+
+Three things around attach that look incidental but are load-bearing:
+
+- **`savedProjectName` is a filename, not a display name.** It must be the base
+  name of a title file that actually exists in the gist (`resolveTitleFileName`),
+  or `null`. `updateGist` turns it into `_<name>.md` and sends `null` to delete
+  it on rename — pass the displayed project name instead and you'll try to delete
+  a file that was never there while the real title file survives as garbage.
+- **`attachmentEpoch` guards in-flight saves.** `autoSave` / `handleClick` capture
+  the epoch before awaiting and drop their write-back if it changed. Without it, a
+  save that finishes after a detach resurrects the old `gistId` and the next run
+  overwrites a gist belonging to a different project.
+- **`GistError.code` distinguishes `notfound` / `forbidden` / `ratelimit`.** A 404
+  (deleted gist, or someone else's — GitHub returns 404 for both to avoid
+  disclosing existence) detaches instead of retrying forever on every run.
+
 ### OpenProcessing deploy
 
 `src/openprocessing.ts` deploys a sketch to OpenProcessing's Public API. Things

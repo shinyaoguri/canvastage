@@ -5,9 +5,14 @@ import { DEFAULT_HTML, DEFAULT_CSS } from "./defaults";
 // GitHub Gist API のレスポンスのうち本アプリが使う部分だけを検証する。
 // 想定外の形（エラーエンベロープが 200 で返る等）を早期に弾き、undefined の id が
 // 後続処理へ流れ込むのを防ぐ。未知フィールドは読まないので strip（既定）でよい。
+
+// 匿名 Gist には owner 自体が無く、null で返る個体もあるので nullish で受ける。
+const GistOwnerSchema = z.object({ login: z.string() }).nullish();
+
 const GistResultSchema = z.object({
   id: z.string(),
   html_url: z.string(),
+  owner: GistOwnerSchema,
 });
 
 const GistFileSchema = z
@@ -18,8 +23,13 @@ const GistFileSchema = z
   })
   .nullable();
 
+// 取得側は id / html_url も optional にしておく。ここを required にすると、
+// files だけを返す最小のレスポンス（テストのモック含む）が想定外の形として弾かれる。
 const GistResponseSchema = z.object({
+  html_url: z.string().optional(),
+  updated_at: z.string().optional(),
   description: z.string().optional(),
+  owner: GistOwnerSchema,
   files: z.record(z.string(), GistFileSchema),
 });
 
@@ -28,21 +38,49 @@ type GistFile = NonNullable<z.infer<typeof GistFileSchema>>;
 export interface GistResult {
   id: string;
   url: string;
+  /** 所有者の login。匿名 Gist / owner 欠落は null。 */
+  ownerLogin: string | null;
 }
 
 export interface GistImport {
   files: Files;
   projectName: string;
+  /** 取得に使った id をそのまま返す（レスポンスの id は optional なため）。 */
+  gistId: string;
+  /** 所有者の login。匿名 Gist / owner 欠落は null。 */
+  ownerLogin: string | null;
+  /** Gist 上に実在するタイトルファイルのベース名。無ければ null。 */
+  titleName: string | null;
+  htmlUrl: string | null;
+  /** 遠隔更新の検知に使う ISO8601 文字列。 */
+  updatedAt: string | null;
 }
+
+export type GistErrorCode =
+  "auth" | "forbidden" | "notfound" | "ratelimit" | "api" | "network";
 
 export class GistError extends Error {
   constructor(
     message: string,
-    public code: "auth" | "api" | "network"
+    public code: GistErrorCode
   ) {
     super(message);
     this.name = "GistError";
   }
+}
+
+// 取り込んだ Gist が自分のものかを判定する。
+// GitHub の login は大文字小文字を区別しない。匿名 Gist（owner 無し）と、
+// 自分の login が不明なとき（未認証・取得失敗）は常に false ＝ 新規プロジェクト扱い。
+// 誤って attach すると「更新継続中」と誤表示したまま他人の Gist へ PATCH を投げ続ける
+// ので、判定不能なら必ず継続しない側へ倒す。
+export function isOwnGist(
+  ownerLogin: string | null,
+  myLogin: string | null
+): boolean {
+  return Boolean(
+    ownerLogin && myLogin && ownerLogin.toLowerCase() === myLogin.toLowerCase()
+  );
 }
 
 // Gist 一覧のタイトルは「登録順の先頭」ではなく「ファイル名のアルファベット順の
@@ -74,6 +112,47 @@ function gistFiles(files: Files, projectName: string): GistFileMap {
   };
 }
 
+// HTTP ステータスを GistError.code へ正規化する。
+// 403 は「権限が無い」と「レート制限」の両方に使われるので残枠ヘッダで見分ける。
+// テスト用の偽 Response は headers を持たないので optional chain で触ること。
+function classifyStatus(response: Response): GistErrorCode {
+  if (response.status === 401) return "auth";
+  if (response.status === 404) return "notfound";
+  if (response.status === 429) return "ratelimit";
+  if (response.status === 403) {
+    const remaining = response.headers?.get?.("x-ratelimit-remaining");
+    return remaining === "0" ? "ratelimit" : "forbidden";
+  }
+  return "api";
+}
+
+// 非 ok レスポンスを GistError へ正規化する。呼び出し側が code で分岐できるよう、
+// 404 とレート制限を "api" に丸めない（丸めると消えた Gist へ永久にリトライしてしまう）。
+async function toGistError(
+  response: Response,
+  notFoundMessage: string
+): Promise<GistError> {
+  const code = classifyStatus(response);
+  if (code === "auth") {
+    return new GistError("トークンが無効です。再認証してください。", code);
+  }
+  if (code === "notfound") {
+    return new GistError(notFoundMessage, code);
+  }
+  if (code === "ratelimit") {
+    return new GistError(
+      "GitHub API のアクセス上限に達しました。しばらく待つか、GitHub に接続すると上限が緩和されます。",
+      code
+    );
+  }
+  const data = await response.json().catch(() => ({}));
+  return new GistError(
+    (data as { message?: string }).message ||
+      `GitHub API error (${response.status})`,
+    code
+  );
+}
+
 async function sendGistRequest(
   url: string,
   method: "POST" | "PATCH",
@@ -96,21 +175,21 @@ async function sendGistRequest(
     throw new GistError("ネットワークエラーが発生しました。", "network");
   }
 
-  if (response.status === 401) {
-    throw new GistError("トークンが無効です。再認証してください。", "auth");
-  }
-
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new GistError(
-      (data as { message?: string }).message ||
-        `GitHub API error (${response.status})`,
-      "api"
+    // GitHub は他人の Gist への PATCH も存在秘匿のため 404 を返す。
+    // どちらにせよ取るべき対応（連携を解除する）は同じなので両対応の文言にする。
+    throw await toGistError(
+      response,
+      "この Gist を更新できませんでした（削除された、または権限がありません）。"
     );
   }
 
   const data = await parseJson(response, GistResultSchema);
-  return { id: data.id, url: data.html_url };
+  return {
+    id: data.id,
+    url: data.html_url,
+    ownerLogin: data.owner?.login ?? null,
+  };
 }
 
 // レスポンス JSON をデコードしてスキーマ検証する。非 JSON / 想定外の形は
@@ -154,46 +233,62 @@ export function parseGistId(input: string): string | null {
   return match ? match[1] : null;
 }
 
+const TITLE_FILE_RE = /^_(.*)\.md$/;
+
+// Gist 上に実在するタイトルファイルのベース名を返す。無ければ null。
+// これは「表示中のプロジェクト名」とは別物で、更新時に旧タイトルファイルを削除する
+// ための実体名として使う（updateGist が titleFileName() で元のファイル名へ戻す）。
+// "_.md" のようにベース名が空のものは titleFileName() で復元できない＝canvastage が
+// 作ったものではないので、削除対象に指定しないよう null を返す。
+export function resolveTitleFileName(filenames: string[]): string | null {
+  for (const name of filenames) {
+    const match = name.match(TITLE_FILE_RE);
+    if (match) return match[1] || null;
+  }
+  return null;
+}
+
 // _<name>.md タイトルファイル → description の順でプロジェクト名を復元する。
 export function resolveProjectName(
   description: string | undefined,
   filenames: string[]
 ): string {
-  const titleFile = filenames.find((name) => /^_.*\.md$/.test(name));
-  if (titleFile) {
-    return titleFile.replace(/^_/, "").replace(/\.md$/, "") || "imported";
+  if (filenames.some((name) => TITLE_FILE_RE.test(name))) {
+    // タイトルファイルはあるがベース名が空（"_.md"）なら既定名にする。
+    return resolveTitleFileName(filenames) ?? "imported";
   }
   const desc = description?.match(/^(.*?)\s+—\s+canvastage sketch$/);
   return desc ? desc[1] : "imported-sketch";
 }
 
-// 公開 Gist を匿名で取得し、canvastage の 3 ファイルとプロジェクト名へマップする。
+// Gist を取得し、canvastage の 3 ファイルとプロジェクト名へマップする。
 // index.html / style.css が無い Gist は既定値で補い、最低限実行できる形にする。
-export async function fetchGist(gistId: string): Promise<GistImport> {
+// token を渡すと secret gist も取得でき、レート制限が IP 60/h から 5000/h に緩む。
+export async function fetchGist(
+  gistId: string,
+  token?: string
+): Promise<GistImport> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   let response: Response;
   try {
     response = await fetch(`https://api.github.com/gists/${gistId}`, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
+      headers,
     });
   } catch {
     throw new GistError("ネットワークエラーが発生しました。", "network");
   }
 
-  if (response.status === 404) {
-    throw new GistError(
-      "Gist が見つかりません。URL を確認してください（公開 Gist のみ対応）。",
-      "api"
-    );
-  }
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new GistError(
-      (data as { message?: string }).message ||
-        `GitHub API error (${response.status})`,
-      "api"
+    throw await toGistError(
+      response,
+      token
+        ? "Gist が見つかりません。URL を確認してください。"
+        : "Gist が見つかりません。URL を確認してください（公開 Gist のみ対応）。"
     );
   }
 
@@ -220,16 +315,19 @@ export async function fetchGist(gistId: string): Promise<GistImport> {
     );
   }
 
+  const filenames = fileList.map((f) => f.filename);
   return {
     files: {
       html: html?.content ?? DEFAULT_HTML,
       css: css?.content ?? DEFAULT_CSS,
       js: js?.content ?? "",
     },
-    projectName: resolveProjectName(
-      data.description,
-      fileList.map((f) => f.filename)
-    ),
+    projectName: resolveProjectName(data.description, filenames),
+    gistId,
+    ownerLogin: data.owner?.login ?? null,
+    titleName: resolveTitleFileName(filenames),
+    htmlUrl: data.html_url ?? null,
+    updatedAt: data.updated_at ?? null,
   };
 }
 

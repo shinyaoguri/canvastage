@@ -3,9 +3,10 @@ import {
   getStoredToken,
   storeToken,
   clearToken,
+  setStoredIdentity,
   initiateOAuth,
 } from "./github-auth";
-import { createGist, updateGist, GistError } from "./gist";
+import { createGist, updateGist, GistError, type GistResult } from "./gist";
 import { generateProjectName } from "./project-name";
 import { showToast } from "./toast";
 
@@ -36,6 +37,10 @@ export class ShareButton {
   // 消すために覚えておく（gistId が無ければ null）。
   private savedProjectName: string | null = null;
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  // 連携先が切り替わるたびに増やす世代番号。保存リクエストの await 中に
+  // detach / attach が起きた場合、完了しても結果を書き戻さないために使う
+  // （書き戻すと、既に切り離したはずの gistId が復活して別プロジェクトを上書きする）。
+  private attachmentEpoch = 0;
   private static readonly AUTO_SAVE_DEBOUNCE_MS = 1500;
 
   constructor(container: HTMLElement, getFiles: () => Files) {
@@ -90,9 +95,33 @@ export class ShareButton {
   // 以降は別スケッチ扱いになり、自動更新で前の Gist を上書きしない。
   detachGist(): void {
     this.cancelAutoSave();
+    this.attachmentEpoch++;
     this.gistId = null;
     this.savedProjectName = null;
     this.dirty = false;
+    this.updateDirtyState();
+  }
+
+  /**
+   * 取り込んだ Gist との連携を開始し、以降の実行で自動更新する。
+   *
+   * savedProjectName には「Gist 上に実在するタイトルファイルのベース名」を渡すこと。
+   * 表示中のプロジェクト名ではない。実在しない名前を渡すと、リネーム時に
+   * 存在しないファイルの削除を試み、本物のタイトルファイルが残骸として残る。
+   *
+   * ここで自動保存はスケジュールしない（取り込んだだけでネットワークに出るのは
+   * 驚きがあるため）。次の実行が通常どおり scheduleAutoSave を呼ぶ。
+   */
+  attachGist(
+    gistId: string,
+    savedProjectName: string | null,
+    dirty = false
+  ): void {
+    this.cancelAutoSave();
+    this.attachmentEpoch++;
+    this.gistId = gistId;
+    this.savedProjectName = savedProjectName;
+    this.dirty = dirty;
     this.updateDirtyState();
   }
 
@@ -131,34 +160,67 @@ export class ShareButton {
     const token = await getStoredToken();
     if (!token) return;
 
+    const epoch = this.attachmentEpoch;
+    const gistId = this.gistId;
     this.setState("sharing");
     try {
       const description = `${this.projectName} — canvastage sketch`;
       const result = await updateGist(
         token,
-        this.gistId,
+        gistId,
         files,
         this.projectName,
         description,
         this.savedProjectName
       );
-      this.gistId = result.id;
-      this.savedProjectName = this.projectName;
-      this.dirty = false;
-      this.updateDirtyState();
+      if (epoch !== this.attachmentEpoch) return; // 保存中に連携先が変わった
+      this.applySaved(result);
     } catch (err) {
-      if (err instanceof GistError && err.code === "auth") {
-        await clearToken();
-        this.setConnected(false);
-        showToast(
-          "セッションが期限切れです。再度シェアしてください。",
-          "error"
-        );
-      }
-      // network / api エラーは dirty のまま残し、次の実行で再試行する（静かに失敗）
+      if (epoch !== this.attachmentEpoch) return;
+      await this.handleSaveError(err, false);
     } finally {
       this.setState("idle");
     }
+  }
+
+  // 保存成功後の状態同期。あわせて所有者名をキャッシュしておくと、Gist 取り込み時の
+  // 所有者判定で GET /user を叩かずに済む。
+  private applySaved(result: GistResult): void {
+    this.gistId = result.id;
+    this.savedProjectName = this.projectName;
+    this.dirty = false;
+    this.updateDirtyState();
+    if (result.ownerLogin) void setStoredIdentity(result.ownerLogin);
+  }
+
+  /**
+   * 保存失敗の後始末。verbose は手動シェア（トーストで必ず知らせる）か
+   * 自動更新（静かに失敗して次の実行で再試行する）かの切り替え。
+   */
+  private async handleSaveError(err: unknown, verbose: boolean): Promise<void> {
+    if (!(err instanceof GistError)) {
+      if (verbose) {
+        const msg =
+          err instanceof Error ? err.message : "Gistの保存に失敗しました。";
+        showToast(msg, "error");
+      }
+      return;
+    }
+    if (err.code === "auth") {
+      await clearToken();
+      this.setConnected(false);
+      showToast("セッションが期限切れです。再度シェアしてください。", "error");
+      return;
+    }
+    // 消えた Gist / 権限を失った Gist へ永久にリトライしないよう連携を解除する。
+    // GitHub は他人の Gist への PATCH も存在秘匿のため 404 を返すので両方を同じ扱いにする。
+    if (err.code === "notfound" || err.code === "forbidden") {
+      this.detachGist();
+      showToast(`${err.message} 連携を解除しました。`, "error");
+      return;
+    }
+    // network / api / ratelimit は dirty のまま残し、次の実行で再試行する
+    if (verbose) showToast(err.message, "error");
   }
 
   private async handleClick(): Promise<void> {
@@ -186,19 +248,22 @@ export class ShareButton {
       this.setState("sharing");
       const files = this.getFiles();
       const description = `${this.projectName} — canvastage sketch`;
+      const epoch = this.attachmentEpoch;
+      const gistId = this.gistId;
 
       try {
         let result;
-        if (this.gistId) {
+        if (gistId) {
           showToast("Gistを更新中...", "info");
           result = await updateGist(
             token,
-            this.gistId,
+            gistId,
             files,
             this.projectName,
             description,
             this.savedProjectName
           );
+          if (epoch !== this.attachmentEpoch) return; // 保存中に連携先が変わった
           showToast("Gistを更新しました！", "success", result.url);
         } else {
           showToast("Gistを作成中...", "info");
@@ -208,25 +273,13 @@ export class ShareButton {
             this.projectName,
             description
           );
+          if (epoch !== this.attachmentEpoch) return;
           showToast("Gistを作成しました！", "success", result.url);
         }
-        this.gistId = result.id;
-        this.savedProjectName = this.projectName;
-        this.dirty = false;
-        this.updateDirtyState();
+        this.applySaved(result);
       } catch (err) {
-        if (err instanceof GistError && err.code === "auth") {
-          await clearToken();
-          this.setConnected(false);
-          showToast(
-            "セッションが期限切れです。もう一度お試しください。",
-            "error"
-          );
-        } else {
-          const msg =
-            err instanceof Error ? err.message : "Gistの保存に失敗しました。";
-          showToast(msg, "error");
-        }
+        if (epoch !== this.attachmentEpoch) return;
+        await this.handleSaveError(err, true);
       }
     } finally {
       this.setState("idle");
