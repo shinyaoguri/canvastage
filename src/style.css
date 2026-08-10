@@ -1199,11 +1199,98 @@ button.settings-group-toggle:hover {
 }
 
 .draft-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 10px 14px;
 }
 
 .draft-item + .draft-item {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.draft-item-body {
+  min-width: 0;
+  flex: 1;
+}
+
+/* 一覧は overflow: hidden なので、共通の outline リングだと項目の縁が
+   切れて「下線だけ出ている」ように見える。内側に描いて全周を見せる。 */
+.draft-list .draft-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+}
+
+/* 名前だけでは見分けがつかないので、実行中の見た目を添える。
+   撮れていないスケッチはコードの抜粋で代用する（draft-item-thumb-code）。 */
+.draft-item-thumb {
+  flex: none;
+  width: 96px;
+  height: 60px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.draft-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.draft-item-thumb-code {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+}
+
+.draft-item-thumb-code pre {
+  margin: 0;
+  font-family: var(--editor-font-family);
+  font-size: 7px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: pre;
+  overflow: hidden;
+  max-height: 100%;
+}
+
+/* 「新規プロジェクトで始める」。候補を選ぶのが主行動なので op-btn-primary
+   （緑の実行ボタン）ではなく控えめな見た目にするが、テキストリンクだと
+   押しどころが分からないので、幅いっぱいの実体のあるボタンにする。 */
+.draft-new-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.draft-new-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 1);
+}
+
+.draft-new-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  opacity: 0.7;
 }
 
 .op-modal {

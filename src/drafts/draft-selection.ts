@@ -133,6 +133,20 @@ export function formatRelativeTime(ts: number, now: number): string {
 export interface DraftSummary {
   name: string;
   meta: string;
+  /** サムネイルが無いときに代わりに見せるコードの抜粋。 */
+  codePreview: string;
+}
+
+/**
+ * コードの見た目の手がかりになる行だけを抜き出す。
+ * 空行と行コメントだけの行は落とし、先頭のインデントも揃えて詰める。
+ */
+function pickCodePreview(js: string, maxLines = 4): string {
+  const lines = js
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("//"));
+  return lines.slice(0, maxLines).join("\n");
 }
 
 /**
@@ -157,6 +171,7 @@ export function summarizeDraft(draft: DraftRecord, now: number): DraftSummary {
   return {
     name: draft.projectName.trim() || "(名前なし)",
     meta: parts.join(" · "),
+    codePreview: pickCodePreview(draft.files.js),
   };
 }
 

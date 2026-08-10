@@ -160,6 +160,38 @@ test.describe("draft restore", () => {
     expect(await page.evaluate(() => "__pwned" in window)).toBe(false);
   });
 
+  test("サムネイルがあれば一覧に見た目を出す", async ({ page }) => {
+    // 1x1 の透明 PNG。中身は問わず、画像として描画されることだけを見る。
+    const pixel =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    await reopenWith(page, makeDraft({ thumbnail: pixel }));
+
+    const img = page.locator(".draft-item-thumb img");
+    await expect(img).toHaveCount(1);
+    await expect(img).toHaveAttribute("src", pixel);
+  });
+
+  // canvas を持たない / まだ実行していないスケッチはコードの抜粋で代用する。
+  test("サムネイルが無ければコードの抜粋を出す", async ({ page }) => {
+    await reopenWith(
+      page,
+      makeDraft({
+        thumbnail: null,
+        files: {
+          html: "",
+          css: "",
+          js: "// leading comment\n\ncircle(50, 50, 20);",
+        },
+      })
+    );
+
+    const code = page.locator(".draft-item-thumb-code");
+    await expect(code).toHaveCount(1);
+    // 空行と行コメントだけの行は抜粋から落とす。
+    await expect(code).toContainText("circle(50, 50, 20);");
+    await expect(code).not.toContainText("leading comment");
+  });
+
   test("他のタブが開いているドラフトは候補に出さない", async ({
     page,
     context,

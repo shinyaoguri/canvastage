@@ -14,6 +14,7 @@ export interface DraftState {
   files: DraftFiles;
   projectName: string;
   currentFile: FileType;
+  thumbnail: string | null;
   gistId: string | null;
   savedProjectName: string | null;
   gistOwnerLogin: string | null;

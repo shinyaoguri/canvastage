@@ -24,6 +24,9 @@ export const DraftRecordSchema = z.object({
   files: DraftFilesSchema,
   projectName: z.string().default(""),
   currentFile: FileTypeSchema.default("js"),
+  // 実行中の canvas を縮小した WebP の dataURL。復元候補を見分けるために持つ。
+  // canvas を持たない / WebGL でバッファが読めないスケッチでは null のまま。
+  thumbnail: z.string().nullable().default(null),
 
   gistId: z.string().nullable().default(null),
   // 「表示中のプロジェクト名」ではなく Gist 上に実在するタイトルファイルの

@@ -131,6 +131,20 @@ resumed. Four rules that look arbitrary but are the whole design:
   accepted and documented in the README rather than papered over with a
   synchronous localStorage mirror.
 
+### Draft thumbnails are captured inside the preview frame
+
+The restore list shows what each sketch looked like, captured through
+`THUMBNAIL_BRIDGE_SCRIPT` in `src/preview.ts`. The parent could read the canvas
+directly (same-origin preview), but it must not: a WebGL context created without
+`preserveDrawingBuffer` is only readable inside the frame that drew it, so the
+capture has to ride the iframe's own `requestAnimationFrame`. The bridge also
+drops single-colour results, which is what an unreadable WebGL buffer looks like
+— those fall back to a code excerpt in the modal instead of showing a black box.
+
+Consequence worth knowing: a webcam sketch's thumbnail contains a frame of the
+camera feed, stored in plain IndexedDB. That is called out in the README next to
+the token warning, and Settings can clear all drafts.
+
 ### The restore prompt resolves before Monaco is created
 
 `init()` awaits `resolveRestore()` *before* `createEditor`. Two things break if

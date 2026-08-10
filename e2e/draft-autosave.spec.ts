@@ -7,6 +7,7 @@ interface StoredDraft {
   id: string;
   projectName: string;
   currentFile: string;
+  thumbnail: string | null;
   files: { html: string; css: string; js: string };
 }
 
@@ -111,6 +112,20 @@ test.describe("draft auto-save", () => {
     expect(drafts.find((d) => d.id === firstId)?.files.js).toContain(
       "// first"
     );
+  });
+
+  // 復元候補を名前だけで見分けるのは難しいので、実行中の canvas を撮って残す。
+  test("実行後のサムネイルがドラフトに残る", async ({ page }) => {
+    await openEditor(page);
+    // 初回実行のキャプチャ（実行の 1.2 秒後）が済んでから編集する。
+    await page.waitForTimeout(2500);
+    await typeInEditor(page, "// with thumbnail");
+
+    await expect
+      .poll(async () => (await readDrafts(page))[0]?.thumbnail?.slice(0, 11), {
+        timeout: 8000,
+      })
+      .toBe("data:image/");
   });
 
   // 同じタブを 2 つ開いても、互いのドラフトを奪い合わない。

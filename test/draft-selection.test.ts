@@ -304,4 +304,38 @@ describe("summarizeDraft", () => {
     const summary = summarizeDraft(draft({ gistId: "g1" }), NOW);
     expect(summary.meta).toContain("Gist 連携あり");
   });
+
+  // サムネイルが撮れていないスケッチの代替表示に使う。
+  describe("codePreview", () => {
+    it("空行と行コメントだけの行を落として詰める", () => {
+      const summary = summarizeDraft(
+        draft({
+          files: {
+            html: "",
+            css: "",
+            js: "// 説明\n\n  circle(1, 2, 3);\n\nrect(4, 5);",
+          },
+        }),
+        NOW
+      );
+      expect(summary.codePreview).toBe("circle(1, 2, 3);\nrect(4, 5);");
+    });
+
+    it("長いコードは先頭 4 行までにする", () => {
+      const js = ["a();", "b();", "c();", "d();", "e();"].join("\n");
+      const summary = summarizeDraft(
+        draft({ files: { html: "", css: "", js } }),
+        NOW
+      );
+      expect(summary.codePreview.split("\n")).toHaveLength(4);
+    });
+
+    it("中身が無ければ空文字", () => {
+      const summary = summarizeDraft(
+        draft({ files: { html: "", css: "", js: "\n\n// only comments\n" } }),
+        NOW
+      );
+      expect(summary.codePreview).toBe("");
+    });
+  });
 });
