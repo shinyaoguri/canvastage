@@ -3,8 +3,13 @@ import { makeTokenStore } from "./token-store";
 // GitHub OAuth App の client_id（publicな値なのでクライアントに埋め込みOK）
 const GITHUB_CLIENT_ID = "Ov23lidMoieTG2EHB1Jw";
 
-export const { getStoredToken, storeToken, clearToken } =
-  makeTokenStore("github-token");
+export const {
+  getStoredToken,
+  storeToken,
+  clearToken,
+  getStoredIdentity,
+  setStoredIdentity,
+} = makeTokenStore("github-token");
 
 export function initiateOAuth(): Promise<string> {
   return new Promise((resolve, reject) => {

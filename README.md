@@ -15,7 +15,7 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **Re-run transitions** — Optional slide-style animation when you re-run a sketch (dissolve / slide / wipe / zoom), with adjustable duration. Off by default; pick one in Settings → Transition
 - **Full input forwarding** — Mouse, keyboard, and touch events pass through to the canvas
 - **Share to GitHub Gist** — Sign in with GitHub to publish/auto-update your sketch as a gist
-- **Import from Gist** — Paste a public canvastage gist URL (or ID) to load it instantly into the editor
+- **Import from Gist** — Paste a canvastage gist URL (or ID) to load it instantly into the editor. If you are signed in and the gist is **yours**, canvastage keeps updating that same gist instead of creating a new one; other people's gists open as a new project. Signing in also lets you import your own secret gists
 - **Deploy to OpenProcessing** — Plus+ members can publish straight to OpenProcessing via API (sketches are created Private by default); everyone else gets a guided manual-upload flow. The toolbar button is **hidden by default** because direct deploy needs a Plus+ write token — turn it on in Settings → Toolbar
 
 ## Getting Started
@@ -60,7 +60,10 @@ stored in IndexedDB after you sign in. **Do not paste and run sketches you don't
 trust.** The bundled samples are safe; arbitrary third-party code is not.
 
 The OAuth token is scoped to `gist` only — it cannot touch your repositories or
-account settings — but it is worth protecting all the same.
+account settings — but it is worth protecting all the same. Canvastage also reads
+your GitHub login name (`GET /user`, public profile data available to any token)
+so that importing a gist can tell whether it is yours; the name is cached
+alongside the token and is removed when you clear it.
 
 The same applies to the **OpenProcessing API token**: it is stored only in your
 browser's IndexedDB and is sent directly to OpenProcessing (their API allows

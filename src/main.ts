@@ -9,7 +9,7 @@ import { DEFAULT_FILES } from "./defaults";
 import { getRandomBasicsSample } from "./samples";
 import { ShareButton } from "./share";
 import { OpenProcessingButton } from "./openprocessing-share";
-import { GistImportButton } from "./gist-import";
+import { GistImportButton, type GistAttachment } from "./gist-import";
 import { AudioReactiveController } from "./audio/audio-reactive";
 import { supportsTabAudio } from "./audio/audio-engine";
 
@@ -382,25 +382,40 @@ async function init() {
   });
 
   // 別スケッチ（サンプル / Gist 取り込み）を読み込む共通処理。
-  // 既存 Gist / OpenProcessing 連携は切り離し、自動更新で上書きしない。
-  const loadFiles = (newFiles: Files) => {
+  // OpenProcessing 連携は常に切り離す。Gist は attach を渡されたときだけ引き継ぎ、
+  // それ以外は切り離して自動更新で前のプロジェクトを上書きしないようにする。
+  const loadFiles = (
+    newFiles: Files,
+    opts: { projectName?: string; attach?: GistAttachment | null } = {}
+  ) => {
     files.html = newFiles.html;
     files.css = newFiles.css;
     files.js = newFiles.js;
     editor.setValue(files[currentFile]);
-    shareButton.detachGist();
     openProcessingButton.detach();
+
+    if (opts.projectName !== undefined) {
+      shareButton.setProjectName(opts.projectName);
+      projectNameInput.value = opts.projectName;
+    }
+    // attach / detach は runCode より前に済ませる。runCode 末尾の scheduleAutoSave
+    // 時点で dirty が false になっているので、取り込み直後に中身が同じままの
+    // 無意味な PATCH（新リビジョンが生える）が飛ばない。
+    if (opts.attach) {
+      shareButton.attachGist(opts.attach.gistId, opts.attach.savedProjectName);
+    } else {
+      shareButton.detachGist();
+    }
     runCode();
   };
 
-  // サンプル選択時にファイルを読み込み
+  // サンプル選択時にファイルを読み込み（常に新規プロジェクト扱い）
   samplesPanel.setOnSelect((sampleFiles) => loadFiles(sampleFiles));
 
-  // Gist 取り込み時：内容を読み込み、プロジェクト名も復元する（新規扱い）。
-  importButton.setOnImport((importedFiles, projectName) => {
-    loadFiles(importedFiles);
-    shareButton.setProjectName(projectName);
-    projectNameInput.value = projectName;
+  // Gist 取り込み時：内容とプロジェクト名を読み込む。
+  // 自分の Gist なら attach が渡され、そのまま更新を継続する。
+  importButton.setOnImport(({ files: importedFiles, projectName, attach }) => {
+    loadFiles(importedFiles, { projectName, attach });
   });
 
   // タブ切り替え
