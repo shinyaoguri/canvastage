@@ -80,3 +80,15 @@ export const HEARTBEAT_INTERVAL_MS = 10_000;
  * 遅れるコストより、両方のタブが同じドラフトを上書きし合うコストの方が高い。
  */
 export const SESSION_STALE_MS = 90_000;
+
+/**
+ * 生存確認 ping への応答を待つ時間。同一プロセス内の配送はサブミリ秒だが、
+ * 対向がバックグラウンドでタスク待ちの場合を見て余裕を持たせる。
+ */
+export const PING_TIMEOUT_MS = 250;
+
+/** 編集が止まってから保存するまでの待ち時間。 */
+export const SAVE_DEBOUNCE_MS = 800;
+
+/** 連続してタイプしている間も、この間隔では必ず書き込む。 */
+export const SAVE_MAX_WAIT_MS = 4_000;
