@@ -79,6 +79,21 @@ Three things around attach that look incidental but are load-bearing:
   (deleted gist, or someone else's — GitHub returns 404 for both to avoid
   disclosing existence) detaches instead of retrying forever on every run.
 
+### One `createStore` call per IndexedDB database
+
+`src/idb-store.ts` opens every database at **version 1**, and IndexedDB only runs
+`upgrade` when the version goes up. So calling `createStore` twice against the
+same database name silently breaks the second store: on any machine where that
+database already exists at v1, `upgrade` never fires, the new object store is
+never created, and every `get`/`put` throws `NotFoundError`. It works on a fresh
+profile, which is exactly why it slips through local testing.
+
+Declare all stores of one database in a single `createStores(dbName, [...])`
+call, or give the new concern its own database name (drafts use
+`canvastage-drafts`, kept separate from `canvastage-db` / `canvastage-auth` so
+neither existing database needs a version bump). `createStore` is now just a
+one-store wrapper around `createStores`.
+
 ### OpenProcessing deploy
 
 `src/openprocessing.ts` deploys a sketch to OpenProcessing's Public API. Things
@@ -135,8 +150,9 @@ that look wrong but are deliberate:
 - `npm test` — Vitest unit tests (`test/`, node env, `vitest.config.ts`). Covers
   pure logic that's painful to exercise via E2E: `gist.ts` (`parseGistId` /
   `resolveProjectName` / `fetchGist` branches with mocked `fetch`), `preview.ts`
-  `buildHtml`, and the OAuth inline-script escaper (`functions/api/auth/escape.ts`,
-  extracted from `callback.ts` so it's importable without the Pages runtime).
+  `buildHtml`, the draft schemas and selection logic (`src/drafts/`), and the
+  OAuth inline-script escaper (`functions/api/auth/escape.ts`, extracted from
+  `callback.ts` so it's importable without the Pages runtime).
   Runs in CI in the `build` job.
 - `npm run test:e2e` — Playwright E2E. Runs against the **production build**
   (`build` → `preview`), because the settings-opacity bug it guards only appeared
