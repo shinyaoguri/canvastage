@@ -14,7 +14,7 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **Audio-reactive beat visualizer (beta)** — Off by default; enable in Settings to react to live audio. Pick the source (microphone or shared-tab audio) and a visual pattern (first one: a soft white flash around the window frame on bass hits). Two detection modes: **Onset** fires on every attack (fast, but also catches off-beats and hi-hats), while **Beat lock** estimates the tempo and phase-locks to the musical beat grid (takes a few seconds to lock, falls back to onset until then). Enabling prompts for the relevant permission; the on/off state is per-session
 - **Re-run transitions** — Optional slide-style animation when you re-run a sketch (dissolve / slide / wipe / zoom), with adjustable duration. Off by default; pick one in Settings → Transition
 - **Full input forwarding** — Mouse, keyboard, and touch events pass through to the canvas
-- **Resume where you left off** — Your sketch is auto-saved to this browser as you type. Reopen canvastage and you're offered the sketches you were working on, along with their gist link, so re-running keeps updating the same gist. Drafts open in another window or tab are left out of the list, and anything older than 48 hours is discarded
+- **Resume where you left off** — Your sketch is auto-saved to this browser as you type. Reopen canvastage and you're offered the sketches you were working on — each with a thumbnail of how it looked — along with their gist link, so re-running keeps updating the same gist. Drafts open in another window or tab are left out of the list, and anything older than 48 hours is discarded
 - **Share to GitHub Gist** — Sign in with GitHub to publish/auto-update your sketch as a gist
 - **Import from Gist** — Paste a canvastage gist URL (or ID) to load it instantly into the editor. If you are signed in and the gist is **yours**, canvastage keeps updating that same gist instead of creating a new one; other people's gists open as a new project. Signing in also lets you import your own secret gists
 - **Deploy to OpenProcessing** — Plus+ members can publish straight to OpenProcessing via API (sketches are created Private by default); everyone else gets a guided manual-upload flow. The toolbar button is **hidden by default** because direct deploy needs a Plus+ write token — turn it on in Settings → Toolbar
@@ -62,6 +62,8 @@ trust.** The bundled samples are safe; arbitrary third-party code is not.
 
 Auto-saved drafts are stored in plain text in this browser's IndexedDB, which
 means the preview can read them too — the same trade-off as the token above.
+Each draft also keeps a small thumbnail of the running sketch, so a webcam sketch
+stores a frame of your camera feed alongside it.
 Settings → "保存中のドラフトを削除" clears them, and they expire after 48 hours
 anyway. Private browsing keeps nothing: IndexedDB is unavailable there, so drafts
 are silently skipped. Saving is debounced and flushed whenever the tab is hidden

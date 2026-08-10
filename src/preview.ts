@@ -253,12 +253,83 @@ function injectBefore(closingTag: "head" | "body", snippet: string) {
       : html + snippet;
 }
 
+// 実行中の canvas を縮小して親へ返すスクリプト。復元候補のサムネイルに使う。
+// プレビューは同一オリジンなので親から直接 canvas を読むこともできるが、
+// WebGL は描画直後でないとバッファが空になるため、iframe 側の
+// requestAnimationFrame に合わせて読む必要がある。
+const THUMBNAIL_BRIDGE_SCRIPT = `
+<script>
+(function() {
+  var MAX_W = 320, MAX_H = 200;
+
+  // 一番大きい canvas を代表とみなす（ライブラリが小さな作業用 canvas を
+  // 併置することがある）。
+  function findCanvas() {
+    var list = document.querySelectorAll('canvas');
+    var best = null, bestArea = 0;
+    for (var i = 0; i < list.length; i++) {
+      var area = list[i].width * list[i].height;
+      if (area > bestArea) { best = list[i]; bestArea = area; }
+    }
+    return best;
+  }
+
+  // 全ピクセルが同色なら「まだ何も描かれていない」とみなす。WebGL で
+  // preserveDrawingBuffer が false のときは真っ黒が返るので、それを弾く。
+  function isBlank(ctx, w, h) {
+    try {
+      var d = ctx.getImageData(0, 0, w, h).data;
+      for (var i = 4; i < d.length; i += 4) {
+        if (d[i] !== d[0] || d[i+1] !== d[1] || d[i+2] !== d[2] || d[i+3] !== d[3]) {
+          return false;
+        }
+      }
+      return true;
+    } catch (e) {
+      // 外部画像で汚染された canvas は読めない。中身はあるはずなので通す。
+      return false;
+    }
+  }
+
+  function capture(id) {
+    var dataUrl = null;
+    try {
+      var canvas = findCanvas();
+      if (canvas && canvas.width && canvas.height) {
+        var scale = Math.min(MAX_W / canvas.width, MAX_H / canvas.height, 1);
+        var out = document.createElement('canvas');
+        out.width = Math.max(1, Math.round(canvas.width * scale));
+        out.height = Math.max(1, Math.round(canvas.height * scale));
+        var ctx = out.getContext('2d');
+        ctx.drawImage(canvas, 0, 0, out.width, out.height);
+        if (!isBlank(ctx, out.width, out.height)) {
+          dataUrl = out.toDataURL('image/webp', 0.6);
+        }
+      }
+    } catch (e) {
+      dataUrl = null;
+    }
+    window.parent.postMessage({ type: 'thumbnail', id: id, dataUrl: dataUrl }, '*');
+  }
+
+  window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'capture-thumbnail') return;
+    var id = e.data.id;
+    // rAF のコールバックは描画の直前に呼ばれる。2 回またいで「1 フレーム
+    // 描き切った直後」に読むことで、WebGL でも中身が残っている確率を上げる。
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { capture(id); });
+    });
+  });
+})();
+</script>`;
+
 export function buildHtml(files: Files): string {
   let html = files.html;
 
   const styleTag = `<style>\n${files.css}\n</style>`;
   const sketchTag = `<script>\n${files.js}\n</script>`;
-  const bridges = `${CONSOLE_BRIDGE_SCRIPT}${INPUT_BRIDGE_SCRIPT}`;
+  const bridges = `${CONSOLE_BRIDGE_SCRIPT}${INPUT_BRIDGE_SCRIPT}${THUMBNAIL_BRIDGE_SCRIPT}`;
 
   // コンソールブリッジと入力ブリッジを最優先で読み込む（p5.js より前）。
   // <head> が無ければ <html> 直後、それも無ければ先頭に挿入する。
@@ -310,6 +381,8 @@ export class Preview {
   private activeIndex = 0;
   // 入力ブリッジで document/window に張るリスナをまとめて外せるようにする。
   private bridgeController = new AbortController();
+  // キャプチャ要求の連番。古い要求の応答を取り違えないために使う。
+  private thumbnailSeq = 0;
   // 一度でも実行したか（初回は遷移元が無いので即時表示）。
   private hasRendered = false;
   // 進行中のトランジション Animation 群（中断/再実行用）。
@@ -477,6 +550,42 @@ export class Preview {
   // コンソールパネルが postMessage の送信元を検証するために使う。
   getContentWindow(): Window | null {
     return this.active.contentWindow;
+  }
+
+  /**
+   * 実行中のスケッチを縮小してキャプチャし、WebP の dataURL を返す。
+   * canvas が無い / 読めない / まだ何も描かれていない場合は null。
+   * 応答が来ない場合に備えてタイムアウトで必ず解決する。
+   */
+  captureThumbnail(timeoutMs = 1500): Promise<string | null> {
+    const win = this.active.contentWindow;
+    if (!win) return Promise.resolve(null);
+
+    const id = ++this.thumbnailSeq;
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value: string | null) => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener("message", onMessage);
+        clearTimeout(timer);
+        resolve(value);
+      };
+      const onMessage = (event: MessageEvent) => {
+        // 実行中のプレビューからの、この要求への応答だけを受け取る。
+        if (event.source !== win) return;
+        const data = event.data as {
+          type?: string;
+          id?: number;
+          dataUrl?: unknown;
+        };
+        if (data?.type !== "thumbnail" || data.id !== id) return;
+        finish(typeof data.dataUrl === "string" ? data.dataUrl : null);
+      };
+      const timer = setTimeout(() => finish(null), timeoutMs);
+      window.addEventListener("message", onMessage);
+      win.postMessage({ type: "capture-thumbnail", id }, "*");
+    });
   }
 
   // スケッチを実行する。トランジション指定があり、かつ既に何か実行中なら、

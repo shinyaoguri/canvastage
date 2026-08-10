@@ -24,6 +24,10 @@ const LANGUAGES: Record<FileType, string> = {
   js: "javascript",
 };
 
+// 実行してからサムネイルを撮るまでの待ち時間。setup が終わり、
+// アニメーションが 1 周りするくらいの見当。
+const THUMBNAIL_DELAY_MS = 1200;
+
 const TAB_LABELS: Record<FileType, string> = {
   html: "index.html",
   css: "style.css",
@@ -276,7 +280,8 @@ async function init() {
     const newName = shareButton.resetProject();
     openProcessingButton.detach();
     projectNameInput.value = newName;
-    // 別のスケッチになったので、前のドラフトとの紐付けを切る。
+    // 別のスケッチになったので、前のドラフトとの紐付けと見た目を切る。
+    thumbnail = null;
     draftManager.startNewDraft();
     runCode();
   };
@@ -289,6 +294,25 @@ async function init() {
     app,
     (source) => source === preview.getContentWindow()
   );
+
+  // 復元候補の一覧に出すサムネイル。実行のたびに撮り直す。
+  let thumbnail: string | null = null;
+  let thumbnailTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // 起動直後の canvas はまだ空だったり、アニメーションが始まっていなかったり
+  // するので、少し待ってから 1 枚だけ撮る。連続実行時は最後の 1 回に集約する。
+  const scheduleThumbnail = () => {
+    if (thumbnailTimer !== null) clearTimeout(thumbnailTimer);
+    thumbnailTimer = setTimeout(() => {
+      thumbnailTimer = null;
+      void preview.captureThumbnail().then((dataUrl) => {
+        if (!dataUrl || dataUrl === thumbnail) return;
+        thumbnail = dataUrl;
+        // 撮れた時点ではドラフトが未作成のこともある（noteState は何もしない）。
+        draftManager.noteState();
+      });
+    }, THUMBNAIL_DELAY_MS);
+  };
 
   // 実行関数
   const runCode = () => {
@@ -310,6 +334,7 @@ async function init() {
     // 実行はドラフトを新規に作らない（起動時の初回実行で空のドラフトが
     // 生えないのはこのため）。既にあるものの保存だけを促す。
     draftManager.noteState();
+    scheduleThumbnail();
   };
 
   const stopCode = () => {
@@ -340,6 +365,8 @@ async function init() {
     files.js = draft.files.js;
     setActiveTab(draft.currentFile);
     currentFile = draft.currentFile;
+    // 実行し直せば撮り直されるが、それまでは前回の見た目を保つ。
+    thumbnail = draft.thumbnail;
 
     shareButton.setProjectName(draft.projectName);
     projectNameInput.value = draft.projectName;
@@ -397,6 +424,7 @@ async function init() {
     files: { ...snapshot() },
     projectName: projectNameInput.value,
     currentFile,
+    thumbnail,
     gistId: shareButton.getGistId(),
     savedProjectName: shareButton.getSavedProjectName(),
     gistOwnerLogin: shareButton.getGistOwnerLogin(),
@@ -542,8 +570,9 @@ async function init() {
     } else {
       shareButton.detachGist();
     }
-    // 別のスケッチになったので、前のドラフトとの紐付けを切る。
+    // 別のスケッチになったので、前のドラフトとの紐付けと見た目を切る。
     // 次の編集で新しいドラフトとして採番される。
+    thumbnail = null;
     draftManager.startNewDraft();
     runCode();
   };
