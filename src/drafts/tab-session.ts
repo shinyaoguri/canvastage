@@ -49,6 +49,14 @@ export class TabSession {
   private claimedAt = 0;
   private handlers: TabSessionHandlers = {};
 
+  /**
+   * 衝突時のハンドラは後から差す。生存確認とハートビートは起動直後に始めたいが、
+   * ハンドラが参照する DraftManager はエディタ生成後にしか作れないため。
+   */
+  setHandlers(handlers: TabSessionHandlers): void {
+    this.handlers = handlers;
+  }
+
   start(handlers: TabSessionHandlers = {}): void {
     this.handlers = handlers;
     if (typeof BroadcastChannel !== "undefined") {

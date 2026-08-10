@@ -12,10 +12,11 @@ import { OpenProcessingButton } from "./openprocessing-share";
 import { GistImportButton, type GistAttachment } from "./gist-import";
 import { AudioReactiveController } from "./audio/audio-reactive";
 import { supportsTabAudio } from "./audio/audio-engine";
-import { TabSession } from "./drafts/tab-session";
+import { startDraftBoot } from "./drafts/draft-boot";
 import { DraftManager, type DraftState } from "./drafts/draft-manager";
+import { promptDraftRestore } from "./draft-restore-modal";
 import { showToast } from "./toast";
-import type { FileType } from "./drafts/draft-types";
+import type { DraftRecord, FileType } from "./drafts/draft-types";
 
 const LANGUAGES: Record<FileType, string> = {
   html: "html",
@@ -155,6 +156,11 @@ function createToolbar(
 async function init() {
   const app = document.getElementById("app")!;
 
+  // ドラフトの探索を先に始め、UI の構築と並走させる（await しない）。
+  // IndexedDB を開く / 他のタブへ生存確認を投げる / 自分のセッションを登録する
+  // までがここで走り出す。結果は初回実行の直前で受け取る。
+  const draftBoot = startDraftBoot();
+
   // 設定を読み込んで適用（SettingsPanel にも渡して IndexedDB の二重読みを避ける）
   const initialSettings = await loadSettings();
   // 非対応ブラウザでは保存値が "tab" でも実行できないので "mic" に矯正する。
@@ -182,6 +188,14 @@ async function init() {
     (type) => switchTab(type)
   );
   app.appendChild(tabs);
+
+  // タブの見た目を切り替える（内容の入れ替えは呼び出し側の責任）。
+  const setActiveTab = (type: FileType) => {
+    tabButtons[currentFile].className = "";
+    tabButtons[currentFile].setAttribute("aria-selected", "false");
+    tabButtons[type].className = "active";
+    tabButtons[type].setAttribute("aria-selected", "true");
+  };
 
   // 設定パネル / サンプルパネル
   const settingsPanel = await SettingsPanel.create(app, initialSettings);
@@ -316,7 +330,58 @@ async function init() {
     }
   };
 
-  // エディタ
+  // 保存済みドラフトから前回の続きを引き継ぐ。エディタ生成前に呼ばれるので
+  // ここでは files とボタンの状態だけを整え、エディタへの反映は生成時に任せる。
+  // loadFiles とは逆に Gist / OpenProcessing 連携を切らずに復元するため、
+  // 共通化していない（フラグ引数が生えると読みにくくなる）。
+  const applyDraft = (draft: DraftRecord) => {
+    files.html = draft.files.html;
+    files.css = draft.files.css;
+    files.js = draft.files.js;
+    setActiveTab(draft.currentFile);
+    currentFile = draft.currentFile;
+
+    shareButton.setProjectName(draft.projectName);
+    projectNameInput.value = draft.projectName;
+    if (draft.gistId) {
+      shareButton.attachGist(
+        draft.gistId,
+        draft.savedProjectName,
+        draft.gistOwnerLogin,
+        draft.gistDirty
+      );
+      // 復元した連携は、最初の自動更新の前に一度だけ実物と突き合わせる。
+      shareButton.markRestored();
+    }
+    if (draft.openProcessingSketchId !== null) {
+      openProcessingButton.attachSketch(
+        draft.openProcessingSketchId,
+        draft.openProcessingOwner,
+        draft.openProcessingDirty
+      );
+    }
+  };
+
+  // 復元候補があれば選ばせる。候補が無ければ何も出さず、そのまま新規で始める。
+  const resolveRestore = async (): Promise<DraftRecord | null> => {
+    const candidates = await draftBoot.candidates;
+    if (candidates.length === 0) return null;
+    const choice = await promptDraftRestore(candidates);
+    if (choice.kind !== "restore") return null;
+    applyDraft(choice.draft);
+    return choice.draft;
+  };
+
+  // 復元するかどうかは、エディタを作る前に決める。
+  //
+  // エディタを先に作って初回実行だけ遅らせると、「エディタは出ているのに
+  // まだ何も実行されていない」隙間ができ、その間に再生ボタンを押すと状態が
+  // ずれる。また、モーダルの裏でランダムなサンプルが動き出すと、webcam や
+  // 音声のサンプルが当たったときに権限ダイアログがモーダルの後ろに出る。
+  // 探索自体は init の冒頭から走っているので、候補が無ければここでほぼ待たない。
+  const restored = await resolveRestore();
+
+  // エディタ（復元した場合は復元後の内容で開く）
   const editor = createEditor(
     document.body,
     files[currentFile],
@@ -326,8 +391,8 @@ async function init() {
   );
 
   // ドラフト自動保存。editor 生成後に組み立てる（getState が snapshot 経由で
-  // エディタを読むため）。
-  const tabSession = new TabSession();
+  // エディタを読むため）。セッション自体は init 冒頭で動き始めている。
+  const tabSession = draftBoot.session;
   const draftState = (): DraftState => ({
     files: { ...snapshot() },
     projectName: projectNameInput.value,
@@ -344,8 +409,10 @@ async function init() {
     getState: draftState,
     session: tabSession,
   });
+  // 復元したドラフトは、このタブのものとして引き継ぐ（新しく採番しない）。
+  if (restored) draftManager.adopt(restored.id, restored.createdAt);
 
-  tabSession.start({
+  tabSession.setHandlers({
     // 同じドラフトを他のタブが握っていた。相手を上書きせず、こちらは別の
     // ドラフトとして分岐する（どちらの内容も失わない）。
     onDraftTaken: () => draftManager.forkDraft(),
@@ -496,12 +563,7 @@ async function init() {
 
     // 現在のファイル内容を保存
     snapshot();
-
-    // タブのアクティブ状態を更新
-    tabButtons[currentFile].className = "";
-    tabButtons[currentFile].setAttribute("aria-selected", "false");
-    tabButtons[type].className = "active";
-    tabButtons[type].setAttribute("aria-selected", "true");
+    setActiveTab(type);
 
     // エディタの内容と言語を切り替え
     currentFile = type;
@@ -513,6 +575,9 @@ async function init() {
 
   // 初回実行
   runCode();
+
+  // 期限切れドラフトと途絶えたセッションの掃除は待たない。
+  void draftBoot.gc();
 }
 
 init().catch((e) => {

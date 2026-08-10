@@ -7,6 +7,7 @@ import {
 } from "./settings";
 import { clearToken as clearGithubToken } from "./github-auth";
 import { clearToken as clearOpenProcessingToken } from "./openprocessing-auth";
+import { clearAllDrafts } from "./drafts/draft-store";
 import { PATTERN_OPTIONS } from "./audio/beat-patterns";
 import { supportsTabAudio } from "./audio/audio-engine";
 import { TRANSITION_OPTIONS } from "./transitions";
@@ -646,8 +647,9 @@ export class SettingsPanel {
       <span class="settings-version">v${__APP_VERSION__} · ${commitHtml}</span>
       <div class="settings-security-note">
         <span class="settings-security-title">⚠ 信頼できないコードは実行しないでください</span>
-        <span class="settings-security-desc">プレビューはこのページと同一オリジンで実行されます。他人の・出所不明なスケッチを実行すると、そのコードが保存済みの GitHub / OpenProcessing トークンを読み取り外部へ送信できてしまいます。信頼できるコードだけ実行し、共有 PC では使用後にトークンを削除してください。</span>
+        <span class="settings-security-desc">プレビューはこのページと同一オリジンで実行されます。他人の・出所不明なスケッチを実行すると、そのコードが保存済みの GitHub / OpenProcessing トークンを読み取り外部へ送信できてしまいます。信頼できるコードだけ実行し、共有 PC では使用後にトークンを削除してください。作業中のスケッチは 48 時間このブラウザに保存されるため、必要なら合わせて削除してください。</span>
         <button class="settings-clear-tokens">保存したトークンを削除</button>
+        <button class="settings-clear-drafts">保存中のドラフトを削除</button>
       </div>
     </div>
     </div>`;
@@ -840,6 +842,27 @@ export class SettingsPanel {
             btn.textContent = "削除に失敗しました";
             setTimeout(() => {
               btn.textContent = "保存したトークンを削除";
+              btn.disabled = false;
+            }, 2000);
+          });
+      });
+
+    // 保存中のドラフトを削除（共有 PC での後始末。トークンとは独立して消せる）
+    this.panel
+      .querySelector(".settings-clear-drafts")
+      ?.addEventListener("click", (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        btn.disabled = true;
+        void clearAllDrafts()
+          .then(() => {
+            btn.textContent = "削除しました ✓";
+          })
+          .catch(() => {
+            btn.textContent = "削除に失敗しました";
+          })
+          .finally(() => {
+            setTimeout(() => {
+              btn.textContent = "保存中のドラフトを削除";
               btn.disabled = false;
             }, 2000);
           });

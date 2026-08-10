@@ -87,6 +87,12 @@ export const SESSION_STALE_MS = 90_000;
  */
 export const PING_TIMEOUT_MS = 250;
 
+/**
+ * 起動時の候補探索に許す時間。これを過ぎたら候補なしとして先へ進む
+ * （IndexedDB が応答しない環境でも起動を止めないため）。
+ */
+export const DISCOVERY_TIMEOUT_MS = 1_500;
+
 /** 編集が止まってから保存するまでの待ち時間。 */
 export const SAVE_DEBOUNCE_MS = 800;
 

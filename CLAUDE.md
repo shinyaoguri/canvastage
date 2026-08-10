@@ -123,6 +123,23 @@ resumed. Four rules that look arbitrary but are the whole design:
   accepted and documented in the README rather than papered over with a
   synchronous localStorage mirror.
 
+### The restore prompt resolves before Monaco is created
+
+`init()` awaits `resolveRestore()` *before* `createEditor`. Two things break if
+you move the editor ahead of it and only delay the first `runCode()`:
+
+- A window opens where the editor is visible but nothing has run yet. Click the
+  run button in that window and it starts a *second* run instead of stopping the
+  first — `e2e/editor.spec.ts` catches exactly this.
+- A random sample would start behind the modal, so a webcam or audio sample
+  fires its permission prompt behind a dialog the user hasn't answered yet.
+
+The discovery starts at the very top of `init()` and runs alongside
+`loadSettings()` and the whole UI build, so with no candidates the await costs
+roughly the BroadcastChannel ping window and nothing else. `applyDraft` therefore
+only fixes up `files` / tab state / attachments; the editor picks the restored
+content up when it is constructed.
+
 ### OpenProcessing deploy
 
 `src/openprocessing.ts` deploys a sketch to OpenProcessing's Public API. Things
@@ -192,11 +209,17 @@ that look wrong but are deliberate:
   the fake-media Chromium flags in `playwright.config.ts`) **and** the Monaco
   language workers (`monaco-worker.spec.ts`: asserts the TS/CSS workers actually
   boot by expecting error squigglies — a wrong worker entry point can still build
-  and silently kill language features) **and** draft auto-save
-  (`draft-autosave.spec.ts`: reads the `canvastage-drafts` IndexedDB directly to
-  assert that an untouched tab writes nothing and an edited one writes exactly
-  one record). First run needs `npx playwright install chromium`. Runs in CI as a
-  required check (the `e2e` job in `ci.yml`).
+  and silently kill language features) **and** drafts (`draft-autosave.spec.ts` /
+  `draft-restore.spec.ts`: read and seed the `canvastage-drafts` IndexedDB
+  directly — an untouched tab writes nothing, an edited one writes exactly one
+  record, a seeded draft comes back through the restore modal, and a draft held
+  by another tab stays out of the list). First run needs `npx playwright install
+  chromium`. Runs in CI as a required check (the `e2e` job in `ci.yml`).
+
+  Note that `saveSettings` is fire-and-forget (`notifyChange` doesn't await it),
+  so a test that reloads right after flipping a setting must first poll
+  IndexedDB for the persisted value — asserting the on-screen effect isn't
+  enough and makes the test flaky under load.
 
 ## Conventions
 

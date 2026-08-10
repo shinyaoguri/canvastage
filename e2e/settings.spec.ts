@@ -13,6 +13,36 @@ async function openSettings(page: Page) {
   await page.waitForSelector("#settings-panel.open");
 }
 
+// IndexedDB に保存済みの設定値を読む（保存が完了したかの確認用）。
+async function readPersistedSetting(page: Page, key: string): Promise<unknown> {
+  return page.evaluate(
+    (settingKey) =>
+      new Promise<unknown>((resolve) => {
+        const request = indexedDB.open("canvastage-db");
+        request.onerror = () => resolve(null);
+        request.onsuccess = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains("settings")) {
+            resolve(null);
+            return;
+          }
+          const get = db
+            .transaction("settings", "readonly")
+            .objectStore("settings")
+            .get("editor-settings");
+          get.onerror = () => resolve(null);
+          get.onsuccess = () =>
+            resolve(
+              (get.result as Record<string, unknown> | undefined)?.[
+                settingKey
+              ] ?? null
+            );
+        };
+      }),
+    key
+  );
+}
+
 // レンジ/テキスト/カラー入力を変更し input を発火
 async function setInput(page: Page, key: string, value: string | number) {
   const ok = await page.evaluate(
@@ -183,6 +213,15 @@ test.describe("settings reflect into the editor (production build)", () => {
     await openSettings(page);
     await setCheckbox(page, "showOpenProcessingButton", true);
     await expect(page.locator("#openprocessing-btn")).toBeVisible();
+
+    // 設定の保存は fire-and-forget（notifyChange が saveSettings を待たない）。
+    // 画面に反映された時点ではまだ IndexedDB に書かれていないことがあるので、
+    // 永続化を確かめてから reload する。待たないと稀に取りこぼす。
+    await expect
+      .poll(() => readPersistedSetting(page, "showOpenProcessingButton"), {
+        timeout: 5000,
+      })
+      .toBe(true);
 
     await page.reload();
     await page.waitForSelector(".monaco-editor .line-numbers", {

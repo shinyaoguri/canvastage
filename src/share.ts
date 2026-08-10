@@ -4,9 +4,17 @@ import {
   storeToken,
   clearToken,
   setStoredIdentity,
+  getStoredIdentity,
   initiateOAuth,
 } from "./github-auth";
-import { createGist, updateGist, GistError, type GistResult } from "./gist";
+import {
+  createGist,
+  updateGist,
+  fetchGist,
+  isOwnGist,
+  GistError,
+  type GistResult,
+} from "./gist";
 import { generateProjectName } from "./project-name";
 import { showToast } from "./toast";
 
@@ -39,6 +47,10 @@ export class ShareButton {
   // 連携中の Gist の所有者。attach 時に受け取り、保存成功時にも更新する。
   private gistOwnerLogin: string | null = null;
   private onAttachmentChange: (() => void) | null = null;
+  // 復元した連携を一度だけ実物と突き合わせる必要があるか。
+  private needsReconcile = false;
+  // 未認証で自動更新を見送ったことを知らせたか（毎回出すとうるさい）。
+  private warnedUnauthenticated = false;
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
   // 連携先が切り替わるたびに増やす世代番号。保存リクエストの await 中に
   // detach / attach が起きた場合、完了しても結果を書き戻さないために使う
@@ -155,6 +167,14 @@ export class ShareButton {
     this.onAttachmentChange = callback;
   }
 
+  /**
+   * ドラフトから復元した連携であることを記録する。
+   * 最初の自動更新の直前に一度だけ実物の Gist と突き合わせる（reconcile 参照）。
+   */
+  markRestored(): void {
+    this.needsReconcile = true;
+  }
+
   // 実行のたびに呼ばれる。Gist が作成済みのときだけ、デバウンスして自動更新する。
   scheduleAutoSave(): void {
     if (this.gistId === null) return; // 未保存のプロジェクトは自動更新しない
@@ -188,7 +208,21 @@ export class ShareButton {
 
     // 未認証ならスキップ。ポップアップはユーザー操作起因でないと開けないため。
     const token = await getStoredToken();
-    if (!token) return;
+    if (!token) {
+      // 復元したドラフトは gistId を持ったまま未接続になりうる。共有ボタンは
+      // 「保存済み」に見えるので、一度だけ理由を伝える（毎回はうるさい）。
+      if (!this.warnedUnauthenticated) {
+        this.warnedUnauthenticated = true;
+        showToast(
+          "GitHub に未接続のため自動更新できません。共有ボタンから再接続してください。",
+          "info"
+        );
+      }
+      return;
+    }
+    this.warnedUnauthenticated = false;
+
+    if (this.needsReconcile && !(await this.reconcile(token))) return;
 
     const epoch = this.attachmentEpoch;
     const gistId = this.gistId;
@@ -211,6 +245,57 @@ export class ShareButton {
     } finally {
       this.setState("idle");
     }
+  }
+
+  /**
+   * 復元した連携を、実際の Gist と一度だけ突き合わせる。
+   *
+   * ドラフトは最大 48 時間前の状態なので、その間に Gist が消えていたり、
+   * トークンが別アカウントへ差し替わっていたり、他の経路でリネームされて
+   * いたりする。リクエスト 1 回でまとめて確かめる。
+   *
+   * 更新を続けてよければ true。連携を解除したら false。
+   */
+  private async reconcile(token: string): Promise<boolean> {
+    const gistId = this.gistId;
+    if (!gistId) return false;
+
+    let gist;
+    try {
+      gist = await fetchGist(gistId, token);
+    } catch (err) {
+      if (
+        err instanceof GistError &&
+        (err.code === "notfound" || err.code === "forbidden")
+      ) {
+        this.needsReconcile = false;
+        this.detachGist();
+        showToast(
+          "前回の Gist が見つかりませんでした。連携を解除しました。",
+          "error"
+        );
+        return false;
+      }
+      // 一時的な失敗（通信 / レート制限）は次の実行でやり直す。
+      return false;
+    }
+
+    this.needsReconcile = false;
+    const myLogin = await getStoredIdentity();
+    if (!isOwnGist(gist.ownerLogin, myLogin)) {
+      this.detachGist();
+      showToast(
+        "この Gist は現在のアカウントのものではないため、連携を解除しました。",
+        "error"
+      );
+      return false;
+    }
+    // 実物のタイトルファイル名に合わせる。ドラフト保存時から名前が変わって
+    // いると、存在しないファイルの削除を試みて本物が残骸になる。
+    this.savedProjectName = gist.titleName;
+    this.gistOwnerLogin = gist.ownerLogin;
+    this.onAttachmentChange?.();
+    return true;
   }
 
   // 保存成功後の状態同期。あわせて所有者名をキャッシュしておくと、Gist 取り込み時の
