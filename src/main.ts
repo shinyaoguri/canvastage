@@ -12,8 +12,10 @@ import { OpenProcessingButton } from "./openprocessing-share";
 import { GistImportButton, type GistAttachment } from "./gist-import";
 import { AudioReactiveController } from "./audio/audio-reactive";
 import { supportsTabAudio } from "./audio/audio-engine";
-
-type FileType = "html" | "css" | "js";
+import { TabSession } from "./drafts/tab-session";
+import { DraftManager, type DraftState } from "./drafts/draft-manager";
+import { showToast } from "./toast";
+import type { FileType } from "./drafts/draft-types";
 
 const LANGUAGES: Record<FileType, string> = {
   html: "html",
@@ -243,6 +245,9 @@ async function init() {
   projectNameInput.setAttribute("aria-label", "プロジェクト名");
   projectNameInput.addEventListener("input", () => {
     shareButton.setProjectName(projectNameInput.value);
+    // draftManager はエディタ生成後に組み立てるが、この入力が起きるのは
+    // 初期化が済んだ後なので参照できる（以降の noteState 呼び出しも同様）。
+    draftManager.noteState();
   });
   projectBar.appendChild(projectNameInput);
   app.appendChild(projectBar);
@@ -257,6 +262,8 @@ async function init() {
     const newName = shareButton.resetProject();
     openProcessingButton.detach();
     projectNameInput.value = newName;
+    // 別のスケッチになったので、前のドラフトとの紐付けを切る。
+    draftManager.startNewDraft();
     runCode();
   };
 
@@ -286,6 +293,9 @@ async function init() {
     updateRunStale();
     // Gist 作成済みなら、実行のたびに（変更があれば）自動更新する
     shareButton.scheduleAutoSave();
+    // 実行はドラフトを新規に作らない（起動時の初回実行で空のドラフトが
+    // 生えないのはこのため）。既にあるものの保存だけを促す。
+    draftManager.noteState();
   };
 
   const stopCode = () => {
@@ -315,13 +325,68 @@ async function init() {
     initialSettings
   );
 
+  // ドラフト自動保存。editor 生成後に組み立てる（getState が snapshot 経由で
+  // エディタを読むため）。
+  const tabSession = new TabSession();
+  const draftState = (): DraftState => ({
+    files: { ...snapshot() },
+    projectName: projectNameInput.value,
+    currentFile,
+    gistId: shareButton.getGistId(),
+    savedProjectName: shareButton.getSavedProjectName(),
+    gistOwnerLogin: shareButton.getGistOwnerLogin(),
+    gistDirty: shareButton.isDirty(),
+    openProcessingSketchId: openProcessingButton.getSketchId(),
+    openProcessingOwner: openProcessingButton.getOwnerName(),
+    openProcessingDirty: openProcessingButton.isDirty(),
+  });
+  const draftManager = new DraftManager({
+    getState: draftState,
+    session: tabSession,
+  });
+
+  tabSession.start({
+    // 同じドラフトを他のタブが握っていた。相手を上書きせず、こちらは別の
+    // ドラフトとして分岐する（どちらの内容も失わない）。
+    onDraftTaken: () => draftManager.forkDraft(),
+    // 同じ Gist を他のタブが自動更新している。両方が更新すると last-write-wins で
+    // 互いの変更を踏み潰し合うので、こちらは連携だけ降りる（内容は残る）。
+    onGistTaken: () => {
+      shareButton.detachGist();
+      showToast(
+        "別のタブで同じ Gist を編集中のため、このタブでは更新を継続しません。",
+        "info"
+      );
+    },
+  });
+
+  // 連携先（gistId / sketchId）が変わったら即座に書き残す。次の実行を待つと、
+  // その間にタブを閉じたときに連携が失われ、再シェアで別の Gist が生えてしまう。
+  shareButton.setOnAttachmentChange(() =>
+    draftManager.noteState({ flush: true })
+  );
+  openProcessingButton.setOnAttachmentChange(() =>
+    draftManager.noteState({ flush: true })
+  );
+
+  // 背面に回る / ページが破棄されるタイミングで確実に書き出す。
+  // pagehide 中の IndexedDB 書き込みは完了保証が無いため、実質的にはこの
+  // visibilitychange が最後の確実な機会になる。
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") draftManager.flushNow();
+  });
+  window.addEventListener("pagehide", () => draftManager.flushNow());
+
   // エディタ変更時にシェアボタン / OpenProcessing ボタンの状態を更新し、
   // 実行中なら「未実行の変更あり」をさりげなく示す。
+  // ドラフトが作られるのはここだけ（起動しただけのタブが一覧を汚さない）。
+  // setValue 由来の flush は code-editor 側で弾かれるので発火しない。
   editor.onDidChange(() => {
     shareButton.markDirty();
     openProcessingButton.markDirty();
     staleSinceRun = true;
     updateRunStale();
+    draftManager.noteEdit();
   });
 
   // 音声ビート可視化コントローラ（既定 OFF・トグルで権限取得）
@@ -402,10 +467,17 @@ async function init() {
     // 時点で dirty が false になっているので、取り込み直後に中身が同じままの
     // 無意味な PATCH（新リビジョンが生える）が飛ばない。
     if (opts.attach) {
-      shareButton.attachGist(opts.attach.gistId, opts.attach.savedProjectName);
+      shareButton.attachGist(
+        opts.attach.gistId,
+        opts.attach.savedProjectName,
+        opts.attach.ownerLogin
+      );
     } else {
       shareButton.detachGist();
     }
+    // 別のスケッチになったので、前のドラフトとの紐付けを切る。
+    // 次の編集で新しいドラフトとして採番される。
+    draftManager.startNewDraft();
     runCode();
   };
 
@@ -435,6 +507,8 @@ async function init() {
     currentFile = type;
     editor.setValue(files[type]);
     editor.setLanguage(LANGUAGES[type]);
+    // 復元時に同じタブを開き直せるよう、選択中のファイルも保存対象にする。
+    draftManager.noteState();
   };
 
   // 初回実行

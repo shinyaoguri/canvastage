@@ -19,6 +19,13 @@ export class OpenProcessingButton {
   private getProjectName: () => string;
   private modal: OpenProcessingModal;
   private sketchId: number | null = null;
+  // どのアカウントで作ったスケッチか（whoami の username）。ドラフトを復元した
+  // ときに、トークンが別アカウントへ差し替わっていないかを見るために持つ。
+  // モーダル経由でトークンを登録した直後の経路では不明なまま（null）になる。
+  private ownerName: string | null = null;
+  // 直近の whoami で確認した持ち主。deploy へ引き渡すための一時値。
+  private lastWhoami: string | null = null;
+  private onAttachmentChange: (() => void) | null = null;
   // デプロイ済み内容から変更があるか。デプロイ後の編集で true になる。
   private dirty = false;
 
@@ -82,8 +89,37 @@ export class OpenProcessingButton {
   // 別スケッチ（新規/サンプル読込）に切り替えたら連携を解除する。
   detach(): void {
     this.sketchId = null;
+    this.ownerName = null;
     this.dirty = false;
     this.updateState();
+    this.onAttachmentChange?.();
+  }
+
+  /** 保存済みドラフトから連携を復元する。デプロイはここでは行わない。 */
+  attachSketch(sketchId: number, owner: string | null, dirty = false): void {
+    this.sketchId = sketchId;
+    this.ownerName = owner;
+    this.dirty = dirty;
+    this.updateState();
+    this.onAttachmentChange?.();
+  }
+
+  /** 連携先が変わったことを知らせる（ドラフト保存が即座に書き残すため）。 */
+  setOnAttachmentChange(callback: () => void): void {
+    this.onAttachmentChange = callback;
+  }
+
+  // 以下 3 つはドラフト保存が現在の連携状態を読むための getter（副作用なし）。
+  getSketchId(): number | null {
+    return this.sketchId;
+  }
+
+  getOwnerName(): string | null {
+    return this.ownerName;
+  }
+
+  isDirty(): boolean {
+    return this.dirty;
   }
 
   // ボタンの見た目で 3 状態を表す:
@@ -108,6 +144,7 @@ export class OpenProcessingButton {
     // 権限確認。read-only トークンなら手動アップロード導線へ。
     try {
       const me = await whoami(token);
+      this.lastWhoami = me.username ?? null;
       if (!me.canWrite) {
         showToast(
           "このトークンには write 権限がありません。手動アップロードをご利用ください。",
@@ -122,12 +159,14 @@ export class OpenProcessingButton {
       return;
     }
 
-    // 取得済みトークンを渡して deploy 側の再読み込みを省く。
-    void this.deploy(token);
+    // 取得済みトークンと持ち主を渡して deploy 側の再読み込みを省く。
+    void this.deploy(token, this.lastWhoami);
   }
 
   // token 未指定時は保存済みトークンを読む（モーダルの onConnected 経路用）。
-  private async deploy(token?: string): Promise<void> {
+  // owner は handleClick が whoami で確認した持ち主。モーダル経由では不明なので
+  // undefined のまま渡り、その場合は持ち主を記録しない。
+  private async deploy(token?: string, owner?: string | null): Promise<void> {
     if (this.state !== "idle") return;
     const resolvedToken = token ?? (await getStoredToken());
     if (!resolvedToken) {
@@ -154,8 +193,10 @@ export class OpenProcessingButton {
         }
       );
       this.sketchId = ref.id;
+      if (owner !== undefined) this.ownerName = owner;
       this.dirty = false;
       this.updateState();
+      this.onAttachmentChange?.();
       showToast(
         isCreate
           ? "OpenProcessing に作成しました！"

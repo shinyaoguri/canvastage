@@ -94,6 +94,35 @@ call, or give the new concern its own database name (drafts use
 neither existing database needs a version bump). `createStore` is now just a
 one-store wrapper around `createStores`.
 
+### Draft auto-save
+
+`src/drafts/` persists the working sketch (files, project name, active tab, gist
+and OpenProcessing attachments) to `canvastage-drafts` so a closed window can be
+resumed. Four rules that look arbitrary but are the whole design:
+
+- **Only `editor.onDidChange` creates a draft.** Every other trigger
+  (`noteState`) saves an *existing* draft and never mints one. That is what keeps
+  the startup `runCode()` — and a tab you opened and never touched — out of the
+  restore list. It works because `code-editor.ts` drops `isFlush` events, so
+  `setValue` (tab switch, sample load, restore) is not an edit.
+- **Concurrent edits fork, they don't lock.** If another tab claims the draft
+  you hold, you re-mint your own id and keep going rather than blocking either
+  side. Worst case there are two drafts; no case loses content. `persist()`
+  re-checks `ownerTabId` right before writing as the fallback for browsers
+  without BroadcastChannel.
+- **The same gist in two tabs is a real hazard.** Gist PATCH has no optimistic
+  locking and auto-save is silent on success, so two attached tabs quietly
+  overwrite each other's revisions. The `claim` message covers this too: the
+  later claimant detaches (content kept) and says so. Ordering is
+  `(claimedAt, tabId)` — a total order, so exactly one side yields and the
+  re-claim on the winning side terminates.
+- **`pagehide` is not a save point.** IndexedDB writes started there aren't
+  guaranteed to finish. The real last chance is `visibilitychange` → hidden,
+  which fires before tab discard on mobile too. Combined with the 800ms debounce
+  and a flush on every run, worst-case loss is the last second of typing —
+  accepted and documented in the README rather than papered over with a
+  synchronous localStorage mirror.
+
 ### OpenProcessing deploy
 
 `src/openprocessing.ts` deploys a sketch to OpenProcessing's Public API. Things
@@ -163,8 +192,11 @@ that look wrong but are deliberate:
   the fake-media Chromium flags in `playwright.config.ts`) **and** the Monaco
   language workers (`monaco-worker.spec.ts`: asserts the TS/CSS workers actually
   boot by expecting error squigglies — a wrong worker entry point can still build
-  and silently kill language features). First run needs `npx playwright install
-  chromium`. Runs in CI as a required check (the `e2e` job in `ci.yml`).
+  and silently kill language features) **and** draft auto-save
+  (`draft-autosave.spec.ts`: reads the `canvastage-drafts` IndexedDB directly to
+  assert that an untouched tab writes nothing and an edited one writes exactly
+  one record). First run needs `npx playwright install chromium`. Runs in CI as a
+  required check (the `e2e` job in `ci.yml`).
 
 ## Conventions
 

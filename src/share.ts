@@ -36,6 +36,9 @@ export class ShareButton {
   // 現在の Gist に保存済みのプロジェクト名。リネーム時に旧タイトルファイルを
   // 消すために覚えておく（gistId が無ければ null）。
   private savedProjectName: string | null = null;
+  // 連携中の Gist の所有者。attach 時に受け取り、保存成功時にも更新する。
+  private gistOwnerLogin: string | null = null;
+  private onAttachmentChange: (() => void) | null = null;
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
   // 連携先が切り替わるたびに増やす世代番号。保存リクエストの await 中に
   // detach / attach が起きた場合、完了しても結果を書き戻さないために使う
@@ -84,6 +87,23 @@ export class ShareButton {
     return this.projectName;
   }
 
+  // 以下 3 つはドラフト保存が現在の連携状態を読むための getter（副作用なし）。
+  getGistId(): string | null {
+    return this.gistId;
+  }
+
+  getSavedProjectName(): string | null {
+    return this.savedProjectName;
+  }
+
+  getGistOwnerLogin(): string | null {
+    return this.gistOwnerLogin;
+  }
+
+  isDirty(): boolean {
+    return this.dirty;
+  }
+
   resetProject(): string {
     this.detachGist();
     this.projectName = generateProjectName();
@@ -98,8 +118,10 @@ export class ShareButton {
     this.attachmentEpoch++;
     this.gistId = null;
     this.savedProjectName = null;
+    this.gistOwnerLogin = null;
     this.dirty = false;
     this.updateDirtyState();
+    this.onAttachmentChange?.();
   }
 
   /**
@@ -115,14 +137,22 @@ export class ShareButton {
   attachGist(
     gistId: string,
     savedProjectName: string | null,
+    ownerLogin: string | null = null,
     dirty = false
   ): void {
     this.cancelAutoSave();
     this.attachmentEpoch++;
     this.gistId = gistId;
     this.savedProjectName = savedProjectName;
+    this.gistOwnerLogin = ownerLogin;
     this.dirty = dirty;
     this.updateDirtyState();
+    this.onAttachmentChange?.();
+  }
+
+  /** 連携先が変わったことを知らせる（ドラフト保存が即座に書き残すため）。 */
+  setOnAttachmentChange(callback: () => void): void {
+    this.onAttachmentChange = callback;
   }
 
   // 実行のたびに呼ばれる。Gist が作成済みのときだけ、デバウンスして自動更新する。
@@ -188,9 +218,11 @@ export class ShareButton {
   private applySaved(result: GistResult): void {
     this.gistId = result.id;
     this.savedProjectName = this.projectName;
+    if (result.ownerLogin) this.gistOwnerLogin = result.ownerLogin;
     this.dirty = false;
     this.updateDirtyState();
     if (result.ownerLogin) void setStoredIdentity(result.ownerLogin);
+    this.onAttachmentChange?.();
   }
 
   /**

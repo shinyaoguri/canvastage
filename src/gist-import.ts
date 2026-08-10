@@ -20,6 +20,8 @@ export interface GistAttachment {
   gistId: string;
   /** Gist 上に実在するタイトルファイルのベース名（無ければ null）。 */
   savedProjectName: string | null;
+  /** 所有者の login。ドラフト復元時に今のトークンの持ち主と突き合わせる。 */
+  ownerLogin: string | null;
 }
 
 export interface GistImportResult {
@@ -234,6 +236,7 @@ export class GistImportButton {
         gistId: imported.gistId,
         // 表示名ではなく Gist 上の実体名を渡す（リネーム時に消すファイルの特定に使う）。
         savedProjectName: imported.titleName,
+        ownerLogin: imported.ownerLogin,
       },
     };
   }
