@@ -49,6 +49,14 @@ export class TabSession {
   private claimedAt = 0;
   private handlers: TabSessionHandlers = {};
 
+  /**
+   * 衝突時のハンドラは後から差す。生存確認とハートビートは起動直後に始めたいが、
+   * ハンドラが参照する DraftManager はエディタ生成後にしか作れないため。
+   */
+  setHandlers(handlers: TabSessionHandlers): void {
+    this.handlers = handlers;
+  }
+
   start(handlers: TabSessionHandlers = {}): void {
     this.handlers = handlers;
     if (typeof BroadcastChannel !== "undefined") {
@@ -60,6 +68,11 @@ export class TabSession {
     document.addEventListener("visibilitychange", this.onVisibilityChange);
     window.addEventListener("pagehide", this.onPageHide);
     window.addEventListener("pageshow", this.onPageShow);
+  }
+
+  /** BroadcastChannel で生存確認ができるか（できるなら pong の有無が確定的な答え）。 */
+  isBroadcastAvailable(): boolean {
+    return this.channel !== null;
   }
 
   /** このタブが握っているものを更新し、他のタブへ宣言する。 */

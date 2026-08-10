@@ -69,27 +69,63 @@ describe("isExpired", () => {
   });
 });
 
-describe("mergeLiveIds", () => {
+describe("mergeLiveIds（BroadcastChannel あり）", () => {
   it("pong を返したタブのドラフトと Gist は生きている", () => {
     const live = mergeLiveIds({
       pongs: [{ tabId: "tab-2", draftId: "d2", gistId: "g2" }],
       sessions: [],
       now: NOW,
+      broadcastAvailable: true,
     });
     expect(live.draftIds.has("d2")).toBe(true);
     expect(live.gistIds.has("g2")).toBe(true);
   });
 
-  // 判断がつかないものは安全側（生きている）に倒す。
-  it("pong は無いがハートビートが新しければ生きている扱い", () => {
+  // タブを閉じるときのセッション削除はページ破棄中の書き込みなので完了保証が無く、
+  // 閉じたタブのレコードが新しい打刻のまま残ることがある。ここでハートビートも
+  // 見てしまうと「閉じたのに 90 秒間復元できない」状態になる。
+  it("ハートビートが新しくても pong が無ければ生きていない", () => {
     const live = mergeLiveIds({
       pongs: [],
       sessions: [
-        session({ tabId: "tab-2", draftId: "d2", heartbeatAt: NOW - 30_000 }),
+        session({ tabId: "tab-2", draftId: "d2", heartbeatAt: NOW - 1_000 }),
       ],
       now: NOW,
+      broadcastAvailable: true,
     });
-    expect(live.draftIds.has("d2")).toBe(true);
+    expect(live.draftIds.has("d2")).toBe(false);
+  });
+
+  it("draftId が null の pong は何も足さない", () => {
+    const live = mergeLiveIds({
+      pongs: [{ tabId: "tab-2", draftId: null, gistId: null }],
+      sessions: [],
+      now: NOW,
+      broadcastAvailable: true,
+    });
+    expect(live.draftIds.size).toBe(0);
+    expect(live.gistIds.size).toBe(0);
+  });
+});
+
+describe("mergeLiveIds（BroadcastChannel なし）", () => {
+  // 対応していない環境では pong が一切返らないので、ハートビートで代用する。
+  // 判断がつかないものは安全側（生きている）に倒す。
+  it("ハートビートが新しければ生きている扱い", () => {
+    const live = mergeLiveIds({
+      pongs: [],
+      sessions: [
+        session({ tabId: "a", draftId: "alive", heartbeatAt: NOW - 30_000 }),
+        session({
+          tabId: "b",
+          draftId: "dead",
+          heartbeatAt: NOW - 10 * MINUTE,
+        }),
+      ],
+      now: NOW,
+      broadcastAvailable: false,
+    });
+    expect([...live.draftIds]).toEqual(["alive"]);
   });
 
   it("ハートビートが 90 秒より古ければ死んでいる", () => {
@@ -99,47 +135,22 @@ describe("mergeLiveIds", () => {
         session({ tabId: "tab-2", draftId: "d2", heartbeatAt: NOW - 120_000 }),
       ],
       now: NOW,
+      broadcastAvailable: false,
     });
     expect(live.draftIds.has("d2")).toBe(false);
   });
 
-  // BroadcastChannel は自タブに配送しないので、自分は必ず pong を返さない。
-  // 除外し損ねると自分のドラフトを他人のものと誤認して候補から消してしまう。
+  // 自分のセッションを除外し損ねると、自分のドラフトを他人のものと誤認して
+  // 候補から消してしまう。
   it("自分自身のセッションは生存集合に入れない", () => {
     const live = mergeLiveIds({
       pongs: [],
       sessions: [session({ tabId: "me", draftId: "mine", heartbeatAt: NOW })],
       now: NOW,
       selfTabId: "me",
+      broadcastAvailable: false,
     });
     expect(live.draftIds.has("mine")).toBe(false);
-  });
-
-  it("draftId が null のセッションは何も足さない", () => {
-    const live = mergeLiveIds({
-      pongs: [{ tabId: "tab-2", draftId: null, gistId: null }],
-      sessions: [session({ tabId: "tab-3", draftId: null })],
-      now: NOW,
-    });
-    expect(live.draftIds.size).toBe(0);
-    expect(live.gistIds.size).toBe(0);
-  });
-
-  // BroadcastChannel 非対応環境では pong が一切返らない。
-  it("pong が空でもハートビートだけで判定できる", () => {
-    const live = mergeLiveIds({
-      pongs: [],
-      sessions: [
-        session({ tabId: "a", draftId: "alive", heartbeatAt: NOW - 10_000 }),
-        session({
-          tabId: "b",
-          draftId: "dead",
-          heartbeatAt: NOW - 10 * MINUTE,
-        }),
-      ],
-      now: NOW,
-    });
-    expect([...live.draftIds]).toEqual(["alive"]);
   });
 });
 

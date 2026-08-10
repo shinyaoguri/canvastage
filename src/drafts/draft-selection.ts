@@ -37,19 +37,26 @@ export function isExpired(draft: DraftRecord, now: number): boolean {
 /**
  * 「今どこかのタブで開かれている」ドラフト / Gist を割り出す。
  *
- * BroadcastChannel の pong が返ったタブは確実に生きている。返らなかったタブは
- * ハートビートで判断し、まだ新しければ生きている扱いにする（BroadcastChannel が
- * 使えない環境と、応答が間に合わなかった場合の保険）。
- * つまり判断がつかないものは安全側＝生きている扱いに倒す。誤って除外しても
- * 90 秒待てば候補に出てくるだけだが、誤って復元させると二重編集で内容を失う。
+ * BroadcastChannel が使える環境なら、生きているタブは必ず pong を返すので
+ * それが確定的な答えになる。ここでハートビートも併用してはいけない:
+ * タブを閉じるときのセッション削除はページ破棄中の IndexedDB 書き込みで
+ * 完了保証が無く、閉じたはずのタブのレコードが残ることがある。併用すると
+ * その残骸のせいで「閉じたのに 90 秒間復元できない」状態になる。
+ *
+ * ハートビートは BroadcastChannel が使えない環境の代用に限る。そちらでは
+ * 判断がつかないものを安全側＝生きている扱いに倒す。
+ *
+ * 応答が 1 往復に間に合わなかったタブを取り違える余地は残るが、その場合も
+ * 復元時の claim が衝突して分岐するので、両方の内容が消えることはない。
  */
 export function mergeLiveIds(input: {
   pongs: LivePeer[];
   sessions: SessionRecord[];
   now: number;
   selfTabId?: string;
+  broadcastAvailable: boolean;
 }): LiveSet {
-  const { pongs, sessions, now, selfTabId } = input;
+  const { pongs, sessions, now, selfTabId, broadcastAvailable } = input;
   const draftIds = new Set<string>();
   const gistIds = new Set<string>();
   const add = (peer: { draftId: string | null; gistId: string | null }) => {
@@ -57,14 +64,13 @@ export function mergeLiveIds(input: {
     if (peer.gistId) gistIds.add(peer.gistId);
   };
 
-  const responded = new Set(pongs.map((p) => p.tabId));
   for (const peer of pongs) add(peer);
+  if (broadcastAvailable) return { draftIds, gistIds };
 
   for (const session of sessions) {
     // 自分自身は pong を返さない（BroadcastChannel は自タブに配送しない）ので、
     // 明示的に除外しないと自分のドラフトを他人のものと誤認してしまう。
     if (session.tabId === selfTabId) continue;
-    if (responded.has(session.tabId)) continue;
     if (elapsed(session.heartbeatAt, now) > SESSION_STALE_MS) continue;
     add(session);
   }

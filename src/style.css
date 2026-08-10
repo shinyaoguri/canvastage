@@ -486,7 +486,8 @@ a.settings-commit:hover {
   font-size: 10px;
   line-height: 1.5;
 }
-.settings-clear-tokens {
+.settings-clear-tokens,
+.settings-clear-drafts {
   margin-top: 4px;
   padding: 6px 10px;
   border: 1px solid rgba(255, 120, 120, 0.4);
@@ -500,11 +501,13 @@ a.settings-commit:hover {
     background 0.15s,
     color 0.15s;
 }
-.settings-clear-tokens:hover {
+.settings-clear-tokens:hover,
+.settings-clear-drafts:hover {
   background: rgba(255, 120, 120, 0.12);
   color: rgba(255, 160, 160, 1);
 }
-.settings-clear-tokens:disabled {
+.settings-clear-tokens:disabled,
+.settings-clear-drafts:disabled {
   cursor: default;
   opacity: 0.7;
 }
@@ -1163,9 +1166,10 @@ button.settings-group-toggle:hover {
   color: rgba(255, 255, 255, 0.35);
 }
 
-/* OpenProcessing モーダル */
+/* OpenProcessing モーダル（Gist 取り込み / ドラフト復元も同じ骨格を使う） */
 #op-modal-overlay,
-#import-modal-overlay {
+#import-modal-overlay,
+#draft-restore-overlay {
   position: fixed;
   inset: 0;
   display: none;
@@ -1178,8 +1182,28 @@ button.settings-group-toggle:hover {
 }
 
 #op-modal-overlay.open,
-#import-modal-overlay.open {
+#import-modal-overlay.open,
+#draft-restore-overlay.open {
   display: flex;
+}
+
+/* ドラフト復元の一覧。項目はサンプル一覧（samples-item）の見た目を流用し、
+   モーダル内に収まるよう左右の余白だけ詰める。 */
+.draft-list {
+  margin: 12px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.draft-item {
+  padding: 10px 14px;
+}
+
+.draft-item + .draft-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .op-modal {
