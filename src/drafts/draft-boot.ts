@@ -56,6 +56,7 @@ export function startDraftBoot(): DraftBoot {
       sessions,
       now,
       selfTabId: session.tabId,
+      broadcastAvailable: session.isBroadcastAvailable(),
     });
     return selectCandidates({ drafts, liveDraftIds: liveIds.draftIds, now });
   };

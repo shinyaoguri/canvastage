@@ -70,6 +70,11 @@ export class TabSession {
     window.addEventListener("pageshow", this.onPageShow);
   }
 
+  /** BroadcastChannel で生存確認ができるか（できるなら pong の有無が確定的な答え）。 */
+  isBroadcastAvailable(): boolean {
+    return this.channel !== null;
+  }
+
   /** このタブが握っているものを更新し、他のタブへ宣言する。 */
   setHolding(draftId: string | null, gistId: string | null): void {
     if (draftId === this.draftId && gistId === this.gistId) return;

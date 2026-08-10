@@ -110,6 +110,14 @@ resumed. Four rules that look arbitrary but are the whole design:
   side. Worst case there are two drafts; no case loses content. `persist()`
   re-checks `ownerTabId` right before writing as the fallback for browsers
   without BroadcastChannel.
+- **Liveness is decided by pong alone when BroadcastChannel works.** The
+  heartbeat records exist for browsers without it — do not "harden" the check by
+  consulting both. Closing a tab deletes its session from a `pagehide` handler,
+  and that write is not guaranteed to finish; on a slow machine the row survives
+  with a fresh timestamp. Trusting it there means a tab you just closed stays
+  unrestorable for `SESSION_STALE_MS`. CI caught this, local runs did not.
+  A tab that misses the ping window is treated as gone, and the claim exchange
+  on restore forks it instead of losing either side.
 - **The same gist in two tabs is a real hazard.** Gist PATCH has no optimistic
   locking and auto-save is silent on success, so two attached tabs quietly
   overwrite each other's revisions. The `claim` message covers this too: the
