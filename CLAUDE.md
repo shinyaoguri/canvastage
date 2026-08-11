@@ -243,6 +243,35 @@ that look wrong but are deliberate:
   IndexedDB for the persisted value — asserting the on-screen effect isn't
   enough and makes the test flaky under load.
 
+## Deployment
+
+### The deploy job must check out `functions/`
+
+`wrangler pages deploy dist` has **no flag for the functions directory** — it
+picks up `functions/` from the current working directory, implicitly. Deploying
+without it still *succeeds*: you get a site with no Pages Functions and no error
+anywhere. The GitHub OAuth callback (`/api/auth/callback`) then falls through to
+the SPA and returns the editor HTML with a 200, so `initiateOAuth` never receives
+its `postMessage` and every sign-in ends in "認証がキャンセルされました。".
+
+That is exactly what happened between `3ec808a` (#49, which folded the deploy
+workflow into `ci.yml` and dropped `actions/checkout` along the way) and #83 —
+months of broken sign-in with a green CI the whole time.
+
+Two things in the `deploy` job keep it fixed:
+
+- **`actions/checkout` with `sparse-checkout: functions`, placed *before*
+  `download-artifact`.** The order is load-bearing: checkout defaults to
+  `clean: true`, which runs `git clean -ffdx` and would delete the already
+  downloaded (gitignored) `dist/`.
+- **A post-deploy `curl` step** asserting `/api/auth/callback` returns 400
+  ("Missing code parameter"). A wrangler deploy that silently drops the
+  functions is invisible otherwise, so the guard has to be an HTTP check against
+  the deployed site — nothing in the build can detect it.
+
+`npm run typecheck:functions` only type-checks the source; it says nothing about
+whether the functions were shipped.
+
 ## Conventions
 
 - Comments and user-facing strings are largely in Japanese; match the

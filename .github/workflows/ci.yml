@@ -103,6 +103,16 @@ jobs:
       deployments: write
       pull-requests: write
     steps:
+      # wrangler pages deploy には functions ディレクトリを指定するフラグが無く、
+      # cwd 直下の functions/ を暗黙に拾う。checkout を省くと Pages Functions
+      # (OAuth コールバック) が無言でデプロイされず、GitHub サインインが壊れる。
+      # 順序が重要: checkout の既定 clean: true は git clean -ffdx を走らせるため、
+      # dist/ を落とした後に置くと gitignore 済みの dist/ ごと消える。
+      - name: Checkout Pages Functions
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: functions
+
       - name: Download build output
         uses: actions/download-artifact@v8
         with:
@@ -125,6 +135,38 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.head_ref }}
+
+      # Pages Functions が実際に配信されているかをデプロイ後に確かめる。
+      # functions/ が cwd に無いまま deploy しても wrangler は成功するため、
+      # OAuth コールバックが静かに消えても CI は緑のままだった（#83）。
+      # /api/auth/callback は code パラメータ無しなら 400 を返す
+      # （functions/api/auth/callback.ts）。エディタの HTML が返る = Function 不在。
+      - name: Verify Pages Functions are live
+        env:
+          IS_PR: ${{ github.event_name == 'pull_request' }}
+          PREVIEW_URL: ${{ steps.preview-deploy.outputs.deployment-url }}
+        run: |
+          # 三項演算子の慣用句（A && B || C）は使わない。PREVIEW_URL が空文字だと
+          # falsy 扱いで本番 URL に落ち、PR なのに本番を検査して緑になる。
+          if [ "$IS_PR" = "true" ]; then
+            BASE_URL="$PREVIEW_URL"
+          else
+            BASE_URL="https://canvastage.soui.dev"
+          fi
+          if [ -z "$BASE_URL" ]; then
+            echo "::error::デプロイ先 URL を取得できなかった。"
+            exit 1
+          fi
+          for _ in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/auth/callback" || echo 000)
+            if [ "$code" = "400" ]; then
+              echo "OK: $BASE_URL/api/auth/callback -> 400"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$BASE_URL/api/auth/callback が $code を返した（期待値 400）。Pages Functions が配信されていない。"
+          exit 1
 
       - name: Comment PR with preview URL
         if: github.event_name == 'pull_request'
