@@ -268,10 +268,14 @@ Three things keep it fixed, and the first one is the non-obvious part:
   failure is what a first attempt at this fix hit. Keeping the deploy workspace
   free of `package.json` also avoids `git clean -ffdx` (checkout's `clean: true`
   default) wiping the already-downloaded, gitignored `dist/`.
-- **A post-deploy `curl` step** asserting `/api/auth/callback` returns 400
-  ("Missing code parameter"). A wrangler deploy that silently drops the
-  functions is invisible otherwise, so the guard has to be an HTTP check against
-  the deployed site — nothing in the build can detect it.
+- **A post-deploy step grepping wrangler's own output for
+  `Uploading Functions bundle`.** That line is the deployment actually shipping
+  the functions, and it is the hard gate. The obvious check — `curl` the
+  deployed `/api/auth/callback` and expect 400 — cannot be the gate: Cloudflare's
+  bot protection answers GitHub Actions runner IPs with 403, so on the very first
+  main push after the fix the guard went red against a site that was working
+  fine. The HTTP probe is still there, but only warns (403/503 = "edge blocked,
+  inconclusive").
 - Adding a file under `functions/` needs no workflow change, but **adding a
   second directory that wrangler reads from cwd would**.
 
