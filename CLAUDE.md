@@ -245,7 +245,7 @@ that look wrong but are deliberate:
 
 ## Deployment
 
-### The deploy job must check out `functions/`
+### `functions/` has to travel to the deploy job as an artifact
 
 `wrangler pages deploy dist` has **no flag for the functions directory** — it
 picks up `functions/` from the current working directory, implicitly. Deploying
@@ -258,16 +258,22 @@ That is exactly what happened between `3ec808a` (#49, which folded the deploy
 workflow into `ci.yml` and dropped `actions/checkout` along the way) and #83 —
 months of broken sign-in with a green CI the whole time.
 
-Two things in the `deploy` job keep it fixed:
+Three things keep it fixed, and the first one is the non-obvious part:
 
-- **`actions/checkout` with `sparse-checkout: functions`, placed *before*
-  `download-artifact`.** The order is load-bearing: checkout defaults to
-  `clean: true`, which runs `git clean -ffdx` and would delete the already
-  downloaded (gitignored) `dist/`.
+- **`functions/` is uploaded as its own artifact by `build` and downloaded by
+  `deploy`** — deliberately *not* `actions/checkout`. Checking out puts
+  `package.json` in the workspace, and then wrangler-action's `npm i wrangler@4`
+  resolves against the whole project tree and dies on ERESOLVE, because the repo
+  pins `@cloudflare/workers-types@^4` while current wrangler wants `^5`. That
+  failure is what a first attempt at this fix hit. Keeping the deploy workspace
+  free of `package.json` also avoids `git clean -ffdx` (checkout's `clean: true`
+  default) wiping the already-downloaded, gitignored `dist/`.
 - **A post-deploy `curl` step** asserting `/api/auth/callback` returns 400
   ("Missing code parameter"). A wrangler deploy that silently drops the
   functions is invisible otherwise, so the guard has to be an HTTP check against
   the deployed site — nothing in the build can detect it.
+- Adding a file under `functions/` needs no workflow change, but **adding a
+  second directory that wrangler reads from cwd would**.
 
 `npm run typecheck:functions` only type-checks the source; it says nothing about
 whether the functions were shipped.

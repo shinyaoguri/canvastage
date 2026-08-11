@@ -58,6 +58,15 @@ jobs:
           path: dist/
           retention-days: 1
 
+      # wrangler pages deploy は cwd 直下の functions/ を暗黙に拾う。deploy ジョブは
+      # checkout しないので、Pages Functions も artifact で運ばないと無言で欠落する。
+      - name: Upload Pages Functions
+        uses: actions/upload-artifact@v7
+        with:
+          name: functions
+          path: functions/
+          retention-days: 1
+
   e2e:
     name: e2e (settings regression)
     runs-on: ubuntu-latest
@@ -104,14 +113,16 @@ jobs:
       pull-requests: write
     steps:
       # wrangler pages deploy には functions ディレクトリを指定するフラグが無く、
-      # cwd 直下の functions/ を暗黙に拾う。checkout を省くと Pages Functions
+      # cwd 直下の functions/ を暗黙に拾う。これが無いと Pages Functions
       # (OAuth コールバック) が無言でデプロイされず、GitHub サインインが壊れる。
-      # 順序が重要: checkout の既定 clean: true は git clean -ffdx を走らせるため、
-      # dist/ を落とした後に置くと gitignore 済みの dist/ ごと消える。
-      - name: Checkout Pages Functions
-        uses: actions/checkout@v7
+      # checkout ではなく artifact で運ぶのは、package.json をワークスペースに
+      # 持ち込まないため。あると wrangler-action の `npm i wrangler@4` が
+      # @cloudflare/workers-types の peer 範囲とぶつかって ERESOLVE で落ちる。
+      - name: Download Pages Functions
+        uses: actions/download-artifact@v8
         with:
-          sparse-checkout: functions
+          name: functions
+          path: functions
 
       - name: Download build output
         uses: actions/download-artifact@v8
