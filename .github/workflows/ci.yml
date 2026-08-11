@@ -132,6 +132,7 @@ jobs:
 
       - name: Deploy to Cloudflare Pages (Production)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: production-deploy
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -147,37 +148,50 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.head_ref }}
 
-      # Pages Functions が実際に配信されているかをデプロイ後に確かめる。
       # functions/ が cwd に無いまま deploy しても wrangler は成功するため、
       # OAuth コールバックが静かに消えても CI は緑のままだった（#83）。
-      # /api/auth/callback は code パラメータ無しなら 400 を返す
-      # （functions/api/auth/callback.ts）。エディタの HTML が返る = Function 不在。
-      - name: Verify Pages Functions are live
+      # 本判定は wrangler の出力に Functions バンドルのアップロードが現れたか。
+      # HTTP での実地確認は補助に留める。Cloudflare のボット対策が GitHub Actions の
+      # IP を 403 で弾くことがあり、それを失敗にすると誤検知で main が赤くなる。
+      - name: Verify Pages Functions were deployed
         env:
+          # 実際に走るのは production / preview のどちらか一方。他方は空文字。
+          DEPLOY_STDOUT: ${{ steps.production-deploy.outputs.command-output }}${{ steps.preview-deploy.outputs.command-output }}
+          DEPLOY_STDERR: ${{ steps.production-deploy.outputs.command-stderr }}${{ steps.preview-deploy.outputs.command-stderr }}
           IS_PR: ${{ github.event_name == 'pull_request' }}
           PREVIEW_URL: ${{ steps.preview-deploy.outputs.deployment-url }}
         run: |
+          if ! printf '%s\n%s' "$DEPLOY_STDOUT" "$DEPLOY_STDERR" |
+            grep -qF "Uploading Functions bundle"; then
+            echo "::error::wrangler の出力に 'Uploading Functions bundle' が無い。functions/ がワークスペースに落ちているか確認すること（deploy ジョブは checkout せず artifact で受け取る）。"
+            exit 1
+          fi
+          echo "OK: Functions bundle がアップロードされた"
+
+          # ここから先は補助的な実地確認。失敗させない。
           # 三項演算子の慣用句（A && B || C）は使わない。PREVIEW_URL が空文字だと
-          # falsy 扱いで本番 URL に落ち、PR なのに本番を検査して緑になる。
+          # falsy 扱いで本番 URL に落ち、PR なのに本番を検査してしまう。
           if [ "$IS_PR" = "true" ]; then
             BASE_URL="$PREVIEW_URL"
           else
             BASE_URL="https://canvastage.soui.dev"
           fi
           if [ -z "$BASE_URL" ]; then
-            echo "::error::デプロイ先 URL を取得できなかった。"
-            exit 1
+            echo "::warning::デプロイ先 URL を取得できず、実地確認は見送った。"
+            exit 0
           fi
-          for _ in 1 2 3 4 5; do
+          # code パラメータ無しなら 400 "Missing code parameter"
+          # （functions/api/auth/callback.ts）。エディタの HTML が 200 で返る = Function 不在。
+          for _ in 1 2 3; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/auth/callback" || echo 000)
-            if [ "$code" = "400" ]; then
-              echo "OK: $BASE_URL/api/auth/callback -> 400"
-              exit 0
-            fi
+            [ "$code" = "400" ] && break
             sleep 10
           done
-          echo "::error::$BASE_URL/api/auth/callback が $code を返した（期待値 400）。Pages Functions が配信されていない。"
-          exit 1
+          case "$code" in
+            400) echo "OK: $BASE_URL/api/auth/callback -> 400" ;;
+            403 | 503) echo "::warning::$code。Cloudflare のエッジに弾かれたので実地確認は見送った。" ;;
+            *) echo "::warning::$BASE_URL/api/auth/callback が $code を返した（期待値 400）。上のバンドル判定は通っているので、ルーティングかエッジ設定を確認すること。" ;;
+          esac
 
       - name: Comment PR with preview URL
         if: github.event_name == 'pull_request'
