@@ -243,6 +243,41 @@ that look wrong but are deliberate:
   IndexedDB for the persisted value — asserting the on-screen effect isn't
   enough and makes the test flaky under load.
 
+## Deployment
+
+### `functions/` has to travel to the deploy job as an artifact
+
+`wrangler pages deploy dist` has **no flag for the functions directory** — it
+picks up `functions/` from the current working directory, implicitly. Deploying
+without it still *succeeds*: you get a site with no Pages Functions and no error
+anywhere. The GitHub OAuth callback (`/api/auth/callback`) then falls through to
+the SPA and returns the editor HTML with a 200, so `initiateOAuth` never receives
+its `postMessage` and every sign-in ends in "認証がキャンセルされました。".
+
+That is exactly what happened between `3ec808a` (#49, which folded the deploy
+workflow into `ci.yml` and dropped `actions/checkout` along the way) and #83 —
+months of broken sign-in with a green CI the whole time.
+
+Three things keep it fixed, and the first one is the non-obvious part:
+
+- **`functions/` is uploaded as its own artifact by `build` and downloaded by
+  `deploy`** — deliberately *not* `actions/checkout`. Checking out puts
+  `package.json` in the workspace, and then wrangler-action's `npm i wrangler@4`
+  resolves against the whole project tree and dies on ERESOLVE, because the repo
+  pins `@cloudflare/workers-types@^4` while current wrangler wants `^5`. That
+  failure is what a first attempt at this fix hit. Keeping the deploy workspace
+  free of `package.json` also avoids `git clean -ffdx` (checkout's `clean: true`
+  default) wiping the already-downloaded, gitignored `dist/`.
+- **A post-deploy `curl` step** asserting `/api/auth/callback` returns 400
+  ("Missing code parameter"). A wrangler deploy that silently drops the
+  functions is invisible otherwise, so the guard has to be an HTTP check against
+  the deployed site — nothing in the build can detect it.
+- Adding a file under `functions/` needs no workflow change, but **adding a
+  second directory that wrangler reads from cwd would**.
+
+`npm run typecheck:functions` only type-checks the source; it says nothing about
+whether the functions were shipped.
+
 ## Conventions
 
 - Comments and user-facing strings are largely in Japanese; match the
