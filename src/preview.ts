@@ -82,12 +82,21 @@ const CONSOLE_BRIDGE_SCRIPT = `
 const INPUT_BRIDGE_SCRIPT = `
 <script>
 (function() {
-  // canvasのローカル座標に変換するヘルパー
+  // canvasのローカル座標に変換するヘルパー。
+  // CSS で拡縮表示されたキャンバス (固定解像度を画面に収める等) では、表示上の
+  // CSS ピクセルに「論理サイズ / 表示サイズ」の倍率を掛けてキャンバス座標にする。
+  // 下の requestAnimationFrame フックが mouseX 等を毎フレーム上書きするので、
+  // p5.js 自身の拡縮補正は効かない — ここで補正するしかない。
+  // 倍率の基準は p5.js の論理サイズ (width / height)。canvas.width はバッキング
+  // ストアで pixelDensity 倍されているので使わない。論理サイズが無い (p5.js 以外・
+  // instance mode) か表示サイズが 0 のときは等倍のまま。
   function toCanvasCoords(clientX, clientY) {
     var canvas = document.querySelector('canvas');
     if (canvas) {
       var rect = canvas.getBoundingClientRect();
-      return { x: clientX - rect.left, y: clientY - rect.top };
+      var sx = typeof window.width === 'number' && rect.width > 0 ? window.width / rect.width : 1;
+      var sy = typeof window.height === 'number' && rect.height > 0 ? window.height / rect.height : 1;
+      return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
     }
     return { x: clientX, y: clientY };
   }
