@@ -235,7 +235,12 @@ that look wrong but are deliberate:
   `draft-restore.spec.ts`: read and seed the `canvastage-drafts` IndexedDB
   directly — an untouched tab writes nothing, an edited one writes exactly one
   record, a seeded draft comes back through the restore modal, and a draft held
-  by another tab stays out of the list). First run needs `npx playwright install
+  by another tab stays out of the list) **and** the input bridge's coordinate
+  mapping (`preview-input-coords.spec.ts`: a canvas shrunk by CSS must still see
+  `mouseX` / `touches` in canvas coordinates, scaled by p5's logical `width` /
+  `height` rather than the `pixelDensity`-multiplied `canvas.width` — the bridge
+  overwrites p5's own globals every frame, so p5's built-in CSS-scale correction
+  never applies). First run needs `npx playwright install
   chromium`. Runs in CI as a required check (the `e2e` job in `ci.yml`).
 
   Note that `saveSettings` is fire-and-forget (`notifyChange` doesn't await it),
