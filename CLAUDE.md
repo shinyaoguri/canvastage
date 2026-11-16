@@ -131,6 +131,38 @@ resumed. Four rules that look arbitrary but are the whole design:
   accepted and documented in the README rather than papered over with a
   synchronous localStorage mirror.
 
+### Split view turns the input bridge off
+
+In the default overlay layout the editor covers the canvas, so `INPUT_BRIDGE_SCRIPT`
+in `src/preview.ts` forwards the parent's mouse / keyboard / touch events into the
+iframe **and overwrites `mouseX` / `key` / `windowWidth` every frame** from a
+`requestAnimationFrame` hook. Split view (`splitView` setting, `⌘/Ctrl+\`) puts
+the preview in its own pane, where the sketch receives its own events natively —
+so the bridge is switched off there (`Preview.setInputForwarding`, baked into
+`buildHtml` as `window._parentInputEnabled` and toggled at runtime by an
+`input-forwarding` message). Things that look like bugs but aren't:
+
+- **Keys don't reach the sketch until you click the canvas.** That is the point:
+  typing in the editor must not fire `keyPressed()`. Same as OpenProcessing / the
+  p5.js web editor.
+- **Never mix the two paths.** With the bridge on, its per-frame overwrite wins
+  over p5's own values — leaving it on in split view sizes the canvas to the
+  parent window and leaks editor input. When forwarding is switched off, the
+  bridge also writes `windowWidth` back to the iframe's own size, because the
+  layout change's resize can land before the message and the last overwrite
+  would otherwise stick (`e2e/split-view.spec.ts` caught this).
+- **The bridge sends the iframe's size, not the window's.** It observes the
+  frames with `ResizeObserver`; dragging the divider never fires a window
+  `resize`. In overlay both sizes are equal, so nothing changed there.
+- **App shortcuts are relayed out of the iframe.** With focus inside the preview
+  the parent's keydown never fires, so the bridge posts `⌘/Ctrl+Enter` and the
+  layout toggle to the parent as a `shortcut` message (checked against the
+  active preview window, like the console panel).
+
+Layout itself is pure CSS: `applySettings` sets `html[data-layout]` and
+`--split-ratio`; the DOM is not rearranged, so the two-iframe transition and
+Monaco's `automaticLayout` work unchanged.
+
 ### Draft thumbnails are captured inside the preview frame
 
 The restore list shows what each sketch looked like, captured through
@@ -240,7 +272,10 @@ that look wrong but are deliberate:
   `mouseX` / `touches` in canvas coordinates, scaled by p5's logical `width` /
   `height` rather than the `pixelDensity`-multiplied `canvas.width` — the bridge
   overwrites p5's own globals every frame, so p5's built-in CSS-scale correction
-  never applies). First run needs `npx playwright install
+  never applies) **and** split view (`split-view.spec.ts`: the layout switch,
+  that a sketch in split view keeps the pane's `windowWidth` and receives none
+  of the editor's mouse / key input, the runtime toggle in both directions, the
+  shortcut from inside the preview, and the divider drag). First run needs `npx playwright install
   chromium`. Runs in CI as a required check (the `e2e` job in `ci.yml`).
 
   Note that `saveSettings` is fire-and-forget (`notifyChange` doesn't await it),

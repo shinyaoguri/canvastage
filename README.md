@@ -5,6 +5,7 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 ## Features
 
 - **Transparent overlay editor** — Monaco Editor sits on top of the live preview, so your code and artwork coexist
+- **Split view** — When the artwork makes the code hard to read, put the editor on the left and the preview on the right instead. Turn it on in Settings → Layout → Split View, or press `⌘+\` / `Ctrl+\` (`¥` on JIS keyboards) — the shortcut works even while the preview has focus. Drag the divider to resize (double-click resets to half); the ratio is remembered. On narrow screens the preview stacks above the editor. In split view the sketch gets its own mouse/keyboard events directly, so click the canvas to give it keyboard focus — typing in the editor no longer reaches the sketch
 - **Multi-file editing** — Switch between HTML, CSS, and JavaScript tabs
 - **Instant preview** — Press `Ctrl+Enter` to run your sketch immediately
 - **30 editor settings** — Font, theme, opacity, cursor style, and more, persisted in IndexedDB
@@ -13,7 +14,7 @@ A live coding editor for creative coding. Write p5.js sketches with a transparen
 - **Console panel** — Captures `console.log` / `warn` / `error` from the preview iframe
 - **Audio-reactive beat visualizer (beta)** — Off by default; enable in Settings to react to live audio. Pick the source (microphone or shared-tab audio) and a visual pattern (first one: a soft white flash around the window frame on bass hits). Two detection modes: **Onset** fires on every attack (fast, but also catches off-beats and hi-hats), while **Beat lock** estimates the tempo and phase-locks to the musical beat grid (takes a few seconds to lock, falls back to onset until then). Enabling prompts for the relevant permission; the on/off state is per-session
 - **Re-run transitions** — Optional slide-style animation when you re-run a sketch (dissolve / slide / wipe / zoom), with adjustable duration. Off by default; pick one in Settings → Transition
-- **Full input forwarding** — Mouse, keyboard, and touch events pass through to the canvas
+- **Full input forwarding** — In the overlay layout, mouse, keyboard, and touch events pass through the editor to the canvas
 - **Resume where you left off** — Your sketch is auto-saved to this browser as you type. Reopen canvastage and you're offered the sketches you were working on — each with a thumbnail of how it looked — along with their gist link, so re-running keeps updating the same gist. Drafts open in another window or tab are left out of the list, and anything older than 48 hours is discarded
 - **Share to GitHub Gist** — Sign in with GitHub to publish/auto-update your sketch as a gist
 - **Import from Gist** — Paste a canvastage gist URL (or ID) to load it instantly into the editor. If you are signed in and the gist is **yours**, canvastage keeps updating that same gist instead of creating a new one; other people's gists open as a new project. Signing in also lets you import your own secret gists
