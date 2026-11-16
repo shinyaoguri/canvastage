@@ -63,15 +63,17 @@ body,
   will-change: opacity, transform;
 }
 
-/* Monaco Editor コンテナ */
-body > .monaco-editor {
-  position: absolute !important;
-  top: max(2rem, var(--editor-padding)) !important;
-  left: max(0.5rem, var(--editor-padding)) !important;
-  right: max(0.5rem, var(--editor-padding)) !important;
-  bottom: max(0.5rem, var(--editor-padding)) !important;
-  width: auto !important;
-  height: auto !important;
+/* Monaco Editor コンテナ。Monaco は渡された要素の寸法でレイアウトする
+   (automaticLayout はこの要素を監視する) ので、配置はこの要素に当てる。
+   以前は body に直接生成して .monaco-editor の箱だけを CSS で縮めていたため、
+   内部の overflow-guard は body 全幅のままで、分割表示ではプレビューの上に
+   かぶってクリックを奪っていた。 */
+#editor-container {
+  position: absolute;
+  top: max(2rem, var(--editor-padding));
+  left: max(0.5rem, var(--editor-padding));
+  right: max(0.5rem, var(--editor-padding));
+  bottom: max(0.5rem, var(--editor-padding));
   z-index: 10;
 }
 
@@ -1460,6 +1462,105 @@ button.settings-group-toggle:hover {
 
 .op-copy:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+/* ===== 分割表示 =====
+   html[data-layout="split"] のとき、エディタを左・プレビューを右に並べる。
+   DOM は組み替えず配置だけを変える（iframe 2 枚の入れ替え演出と Monaco の
+   automaticLayout をそのまま使うため）。比率 --split-ratio はエディタ側の幅で、
+   applySettings と仕切りのドラッグが書き換える。上部の帯 --split-header には
+   タブ・プロジェクト名・ツールバーが今の絶対配置のまま収まる。 */
+:root {
+  --split-ratio: 0.5;
+  --split-header: 2.5rem;
+}
+
+html[data-layout="split"] .preview-frame {
+  top: var(--split-header);
+  left: calc(var(--split-ratio) * 100%);
+  width: calc((1 - var(--split-ratio)) * 100%);
+  height: calc(100% - var(--split-header));
+}
+
+html[data-layout="split"] #editor-container {
+  top: var(--split-header);
+  right: calc(
+    (1 - var(--split-ratio)) * 100% + max(0.5rem, var(--editor-padding))
+  );
+}
+
+#split-divider {
+  display: none;
+}
+
+html[data-layout="split"] #split-divider {
+  display: block;
+  position: fixed;
+  top: var(--split-header);
+  bottom: 0;
+  left: calc(var(--split-ratio) * 100%);
+  width: 9px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  /* プレビュー(0)・エディタ(10)より上、ツールバー(100)・パネルより下 */
+  z-index: 50;
+  touch-action: none;
+}
+
+#split-divider::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.12);
+  transition:
+    width 0.15s,
+    background 0.15s;
+}
+
+#split-divider:hover::before,
+#split-divider:focus-visible::before,
+html.split-dragging #split-divider::before {
+  width: 3px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+#split-divider:focus-visible {
+  outline: none;
+}
+
+/* ドラッグ中は iframe にポインタを取られないようにし、カーソルを固定する。 */
+html.split-dragging .preview-frame {
+  pointer-events: none;
+}
+
+html.split-dragging,
+html.split-dragging * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+/* 狭い画面では左右に並べる幅が無いので、上にプレビュー・下にエディタを積む。
+   比率は固定でドラッグは出さない。 */
+@media (max-width: 600px) {
+  html[data-layout="split"] .preview-frame {
+    left: 0;
+    width: 100%;
+    height: calc((100% - var(--split-header)) * 0.45);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  html[data-layout="split"] #editor-container {
+    top: calc(var(--split-header) + (100% - var(--split-header)) * 0.45);
+    right: max(0.5rem, var(--editor-padding));
+  }
+
+  html[data-layout="split"] #split-divider {
+    display: none;
+  }
 }
 
 /* ===== キーボードフォーカスの可視化 =====

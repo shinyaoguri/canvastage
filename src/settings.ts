@@ -39,6 +39,13 @@ export const EditorSettingsSchema = z.object({
   // エディタ領域
   editorPadding: z.number().min(0).max(64).default(32),
 
+  // 表示レイアウト。false = プレビュー全面にエディタを重ねる（既定）、
+  // true = エディタ左・プレビュー右の分割表示。分割時は入力ブリッジを止め、
+  // スケッチは iframe 内の通常のイベントを受け取る（CLAUDE.md 参照）。
+  splitView: z.boolean().default(false),
+  // 分割表示でエディタ側が占める幅の割合。仕切りのドラッグで変わる。
+  splitRatio: z.number().min(0.2).max(0.8).default(0.5),
+
   // エディタ機能
   indentGuides: z.boolean().default(false),
   bracketPairGuides: z.boolean().default(false),
@@ -218,4 +225,10 @@ export function applySettings(settings: EditorSettings): void {
   );
 
   root.style.setProperty("--editor-padding", `${settings.editorPadding}px`);
+
+  // レイアウトは CSS が data-layout と --split-ratio を見て切り替える。
+  // DOM の組み替えはしない（iframe の入れ替え演出や Monaco の自動レイアウトを
+  // そのまま使うため）。
+  root.dataset.layout = settings.splitView ? "split" : "overlay";
+  root.style.setProperty("--split-ratio", `${settings.splitRatio}`);
 }

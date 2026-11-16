@@ -167,7 +167,7 @@ test.describe("settings reflect into the editor (production build)", () => {
 
   test("editor padding moves the editor container", async ({ page }) => {
     await openSettings(page);
-    const sel = "body > .monaco-editor";
+    const sel = "#editor-container";
     const before = await computed(page, sel, "left");
     await setInput(page, "editorPadding", 64);
     expect(await computed(page, sel, "left")).not.toBe(before);

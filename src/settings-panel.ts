@@ -262,7 +262,9 @@ const SETTING_GROUPS: SettingGroup[] = [
   },
   {
     title: "Layout",
+    note: "Split View はエディタを左、プレビューを右に並べます（⌘/Ctrl + \\ でも切り替え）。分割中はキャンバスをクリックするとキー入力がスケッチに届きます。",
     settings: [
+      { key: "splitView", label: "Split View", type: "checkbox" },
       {
         key: "editorPadding",
         label: "Padding",
@@ -519,6 +521,36 @@ export class SettingsPanel {
       );
       if (toggle) toggle.checked = enabled;
     }
+  }
+
+  getSettings(): Readonly<EditorSettings> {
+    return this.settings;
+  }
+
+  /**
+   * パネルの外（ショートカット・仕切りのドラッグ）から設定を変える。
+   * 設定の正本はこのパネルが持つ this.settings なので、外で別に保存すると
+   * 次にパネルを操作したときに古い値で上書きされる。必ずここを通す。
+   */
+  update(partial: Partial<EditorSettings>): void {
+    Object.assign(this.settings, partial);
+    for (const key of Object.keys(partial) as (keyof EditorSettings)[]) {
+      const input = this.panel.querySelector<HTMLInputElement>(
+        `input[data-key="${key}"]`
+      );
+      if (!input) continue;
+      const value = this.settings[key];
+      if (input.type === "checkbox") {
+        input.checked = Boolean(value);
+      } else {
+        input.value = String(value);
+        if (input.type === "range") {
+          const valueSpan = input.nextElementSibling;
+          if (valueSpan) valueSpan.textContent = String(value);
+        }
+      }
+    }
+    this.notifyChange();
   }
 
   private notifyChange(): void {

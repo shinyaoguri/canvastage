@@ -16,6 +16,7 @@ import { startDraftBoot } from "./drafts/draft-boot";
 import { DraftManager, type DraftState } from "./drafts/draft-manager";
 import { promptDraftRestore } from "./draft-restore-modal";
 import { showToast } from "./toast";
+import { SplitDivider, isSplitToggleShortcut } from "./split-divider";
 import type { DraftRecord, FileType } from "./drafts/draft-types";
 
 const LANGUAGES: Record<FileType, string> = {
@@ -288,6 +289,19 @@ async function init() {
 
   // プレビュー
   const preview = new Preview(app);
+  // 分割表示ではスケッチが iframe 内の通常のイベントを受け取るので、親からの
+  // 入力転送を止める（初回実行より前に決めておく）。
+  let splitView = initialSettings.splitView;
+  preview.setInputForwarding(!splitView);
+
+  // 分割表示の仕切り。ドラッグ中は見た目だけ変え、離したら設定として保存する。
+  const splitDivider = new SplitDivider(
+    app,
+    initialSettings.splitRatio,
+    (ratio) => settingsPanel.update({ splitRatio: ratio })
+  );
+  const toggleSplitView = () =>
+    settingsPanel.update({ splitView: !settingsPanel.getSettings().splitView });
 
   // コンソールパネル（メッセージはプレビュー iframe からのもののみ受け付ける）
   const consolePanel = new ConsolePanel(
@@ -408,9 +422,14 @@ async function init() {
   // 探索自体は init の冒頭から走っているので、候補が無ければここでほぼ待たない。
   const restored = await resolveRestore();
 
-  // エディタ（復元した場合は復元後の内容で開く）
+  // エディタ（復元した場合は復元後の内容で開く）。Monaco は渡した要素の寸法で
+  // レイアウトするので、配置を CSS で決めた専用の要素に生成する（body に直接
+  // 生成すると内部が画面全幅になり、分割表示でプレビューにかぶる）。
+  const editorContainer = document.createElement("div");
+  editorContainer.id = "editor-container";
+  document.body.appendChild(editorContainer);
   const editor = createEditor(
-    document.body,
+    editorContainer,
     files[currentFile],
     LANGUAGES[currentFile],
     runCode,
@@ -527,6 +546,13 @@ async function init() {
     audioReactive.setPattern(settings.beatPattern);
     void audioReactive.setSource(settings.audioSource);
     openProcessingButton.setVisible(settings.showOpenProcessingButton);
+    // 配置は applySettings が CSS 変数で切り替え済み。ここでは入力転送と
+    // 仕切りの状態を合わせる（スライダー操作のたびに iframe へ送らない）。
+    if (settings.splitView !== splitView) {
+      splitView = settings.splitView;
+      preview.setInputForwarding(!splitView);
+    }
+    splitDivider.setRatio(settings.splitRatio);
   });
 
   // 音声トグル: ON で権限取得して開始、OFF で停止
@@ -601,6 +627,29 @@ async function init() {
     // 復元時に同じタブを開き直せるよう、選択中のファイルも保存対象にする。
     draftManager.noteState();
   };
+
+  // 分割表示の切り替え: ⌘/Ctrl + \（JIS は ¥）。capture で Monaco より先に拾う。
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (!isSplitToggleShortcut(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSplitView();
+    },
+    { capture: true }
+  );
+
+  // キャンバスをクリックして iframe にフォーカスがあると親の keydown は来ない。
+  // ブリッジが中継してくるショートカットを、実行中のプレビューからのものに
+  // 限って受け付ける（コンソールパネルと同じ送信元の検証）。
+  window.addEventListener("message", (event) => {
+    if (event.source !== preview.getContentWindow()) return;
+    const data = event.data as { type?: string; action?: string } | null;
+    if (data?.type !== "shortcut") return;
+    if (data.action === "run") runCode();
+    else if (data.action === "toggle-layout") toggleSplitView();
+  });
 
   // 初回実行
   runCode();

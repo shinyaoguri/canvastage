@@ -101,6 +101,13 @@ const INPUT_BRIDGE_SCRIPT = `
     return { x: clientX, y: clientY };
   }
 
+  // 親からの入力転送を使うか。分割表示ではプレビューが画面の一部になり、
+  // スケッチは iframe 内の通常のイベントを直接受け取る。そこへ親の値
+  // (エディタ上のマウス・タイピング・親ウィンドウの幅) を混ぜると壊れるので、
+  // 転送の受け取りと毎フレームの上書きをまとめて止める。初期値は buildHtml が
+  // 埋め込み、実行中の切り替えは 'input-forwarding' メッセージで届く。
+  var forwarding = window._parentInputEnabled !== false;
+
   // 親から受け取った入力状態を保持
   window._parentInput = {
     mouse: { x: 0, y: 0, pressed: false, button: 0 },
@@ -113,6 +120,25 @@ const INPUT_BRIDGE_SCRIPT = `
   window.addEventListener('message', function(e) {
     if (!e.data || !e.data.type) return;
     var data = e.data;
+
+    if (data.type === 'input-forwarding') {
+      forwarding = !!data.enabled;
+      // 切り替えの瞬間に押下中だった状態を持ち越さない（離した事実は届かない）。
+      window._parentInput.mouse.pressed = false;
+      window._parentInput.keyboard.isPressed = false;
+      // 止めた時点の windowWidth は、直前の rAF が書いた親側の値かもしれない。
+      // レイアウト変更による iframe の resize がこのメッセージより先に処理されると、
+      // p5.js が正しく更新した値をその後の rAF が古い幅で上書きしたまま残る。
+      // p5.js が持つべき値 (iframe 自身の寸法) に戻しておく。
+      if (!forwarding && typeof window.windowWidth !== 'undefined') {
+        window.windowWidth = window.innerWidth;
+        window.windowHeight = window.innerHeight;
+      }
+      return;
+    }
+    // 寸法 (resize) は転送を止めていても受け取る。重ね表示へ戻った瞬間に
+    // 古い幅で windowWidth を上書きしないため。
+    if (!forwarding && data.type !== 'resize') return;
 
     switch (data.type) {
       case 'mouse':
@@ -200,6 +226,11 @@ const INPUT_BRIDGE_SCRIPT = `
   var originalRAF = window.requestAnimationFrame;
   window.requestAnimationFrame = function(callback) {
     return originalRAF.call(window, function(timestamp) {
+      // 転送を止めている間は p5.js 自身が持つ値をそのまま使う。
+      if (!forwarding) {
+        callback(timestamp);
+        return;
+      }
       var input = window._parentInput;
 
       // マウス関連
@@ -234,6 +265,19 @@ const INPUT_BRIDGE_SCRIPT = `
       callback(timestamp);
     });
   };
+
+  // アプリのショートカットを親へ中継する。キャンバスをクリックして iframe に
+  // フォーカスがあると、親の keydown は発火しない（分割表示ではこれが普通）。
+  // 判定は src/split-divider.ts の isSplitToggleShortcut と揃えること。
+  window.addEventListener('keydown', function(e) {
+    if (!(e.metaKey || e.ctrlKey) || e.isComposing || e.keyCode === 229) return;
+    var action = null;
+    if (e.key === 'Enter') action = 'run';
+    else if (e.key === '\\\\' || e.key === '¥' || e.code === 'IntlYen') action = 'toggle-layout';
+    if (!action) return;
+    e.preventDefault();
+    window.parent.postMessage({ type: 'shortcut', action: action }, '*');
+  }, true);
 })();
 </script>
 `;
@@ -333,12 +377,23 @@ const THUMBNAIL_BRIDGE_SCRIPT = `
 })();
 </script>`;
 
-export function buildHtml(files: Files): string {
+export interface BuildOptions {
+  /**
+   * 親ウィンドウからの入力転送を使うか（既定 true = 重ね表示）。
+   * 分割表示では false にし、スケッチに iframe 内の通常のイベントを使わせる。
+   */
+  forwardInput?: boolean;
+}
+
+export function buildHtml(files: Files, options: BuildOptions = {}): string {
   let html = files.html;
 
+  const forwardInput = options.forwardInput ?? true;
   const styleTag = `<style>\n${files.css}\n</style>`;
   const sketchTag = `<script>\n${files.js}\n</script>`;
-  const bridges = `${CONSOLE_BRIDGE_SCRIPT}${INPUT_BRIDGE_SCRIPT}${THUMBNAIL_BRIDGE_SCRIPT}`;
+  // 入力ブリッジは読み込み時にこの値を見るので、ブリッジより前に置く。
+  const inputFlag = `<script>window._parentInputEnabled = ${forwardInput};</script>`;
+  const bridges = `${CONSOLE_BRIDGE_SCRIPT}${inputFlag}${INPUT_BRIDGE_SCRIPT}${THUMBNAIL_BRIDGE_SCRIPT}`;
 
   // コンソールブリッジと入力ブリッジを最優先で読み込む（p5.js より前）。
   // <head> が無ければ <html> 直後、それも無ければ先頭に挿入する。
@@ -398,6 +453,11 @@ export class Preview {
   private transitionAnims: Animation[] | null = null;
   // run のたびに増やし、非同期処理が古い実行のものか判定する世代カウンタ。
   private gen = 0;
+  // 親で受けた入力（マウス・ホイール・キー・タッチ）をスケッチへ転送するか。
+  // 重ね表示ではエディタがキャンバスを覆うので必要、分割表示では止める。
+  private forwardInput = true;
+  // フレームの寸法変化を拾う（分割表示の仕切りドラッグ・切り替えで変わる）。
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor(container: HTMLElement) {
     this.frames = [this.createFrame(), this.createFrame()];
@@ -451,6 +511,20 @@ export class Preview {
     return this.frames[this.activeIndex ^ 1];
   }
 
+  /**
+   * 親からの入力転送を切り替える（分割表示では false）。次の実行は buildHtml の
+   * 埋め込み値で、実行中のフレームにはメッセージで伝える。
+   */
+  setInputForwarding(enabled: boolean): void {
+    this.forwardInput = enabled;
+    for (const frame of this.frames) {
+      frame.contentWindow?.postMessage(
+        { type: "input-forwarding", enabled },
+        "*"
+      );
+    }
+  }
+
   private setupInputBridge(): void {
     const signal = this.bridgeController.signal;
     const post = (data: Record<string, unknown>) => {
@@ -458,10 +532,16 @@ export class Preview {
       if (!win) return;
       win.postMessage(data, "*");
     };
+    // 入力イベントは転送が有効なときだけ送る。分割表示でエディタ上の
+    // マウス移動やタイピングがスケッチへ漏れないようにする。
+    const postInput = (data: Record<string, unknown>) => {
+      if (!this.forwardInput) return;
+      post(data);
+    };
 
     // マウスイベント
     const sendMouseEvent = (e: MouseEvent, eventType: string) => {
-      post({
+      postInput({
         type: "mouse",
         eventType,
         x: e.clientX,
@@ -491,14 +571,14 @@ export class Preview {
     document.addEventListener(
       "wheel",
       (e) => {
-        post({ type: "wheel", deltaY: e.deltaY });
+        postInput({ type: "wheel", deltaY: e.deltaY });
       },
       { signal }
     );
 
     // キーボードイベント（captureフェーズでMonaco Editorより先にキャプチャ）
     const sendKeyEvent = (e: KeyboardEvent, eventType: string) => {
-      post({
+      postInput({
         type: "keyboard",
         eventType,
         key: e.key,
@@ -514,15 +594,22 @@ export class Preview {
       signal,
     });
 
-    // ウィンドウリサイズ
+    // リサイズ。スケッチの windowWidth / windowHeight になる値なので、親の
+    // ウィンドウではなくプレビュー iframe 自身の寸法を送る。重ね表示では両者が
+    // 一致し、分割表示ではペインの寸法になる。仕切りのドラッグや表示の切り替えでは
+    // window の resize が起きないので、ResizeObserver でフレームを見る。
     const sendResize = () => {
       post({
         type: "resize",
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: this.active.clientWidth,
+        height: this.active.clientHeight,
       });
     };
     window.addEventListener("resize", sendResize, { signal });
+    if (typeof ResizeObserver !== "undefined") {
+      this.resizeObserver = new ResizeObserver(sendResize);
+      this.frames.forEach((f) => this.resizeObserver!.observe(f));
+    }
     // 初期サイズも送信
     sendResize();
 
@@ -533,7 +620,7 @@ export class Preview {
         y: t.clientY,
         id: t.identifier,
       }));
-      post({ type: "touch", eventType, touches });
+      postInput({ type: "touch", eventType, touches });
     };
     document.addEventListener(
       "touchstart",
@@ -601,7 +688,7 @@ export class Preview {
   // 裏フレームで新スケッチを起動してからアニメーションで入れ替える。
   run(files: Files, options: RunOptions = {}): void {
     const myGen = ++this.gen;
-    const html = buildHtml(files);
+    const html = buildHtml(files, { forwardInput: this.forwardInput });
     const transition =
       options.transition && options.durationMs
         ? getTransition(options.transition)
@@ -735,6 +822,7 @@ export class Preview {
   // 現状は単一ライフサイクルだが、Preview を再生成可能にした際の leak を防ぐ。
   dispose(): void {
     this.bridgeController.abort();
+    this.resizeObserver?.disconnect();
     this.frames.forEach((f) => f.remove());
   }
 }

@@ -40,6 +40,23 @@ describe("buildHtml", () => {
     expect(out).toContain("_parentInput");
   });
 
+  // 分割表示では親からの入力転送を止める。ブリッジは読み込み時にこのフラグを
+  // 見るので、ブリッジ本体より前に埋め込まれていなければならない。
+  it("既定では入力転送を有効にするフラグを埋め込む（重ね表示と互換）", () => {
+    const out = buildHtml(files(`<html><head></head><body></body></html>`));
+    expect(out).toContain("window._parentInputEnabled = true;");
+  });
+
+  it("forwardInput: false なら転送を止めるフラグをブリッジより前に埋め込む", () => {
+    const out = buildHtml(files(`<html><head></head><body></body></html>`), {
+      forwardInput: false,
+    });
+    const flagAt = out.indexOf("window._parentInputEnabled = false;");
+    expect(flagAt).toBeGreaterThan(-1);
+    expect(out).not.toContain("window._parentInputEnabled = true;");
+    expect(flagAt).toBeLessThan(out.indexOf("window._parentInput = {"));
+  });
+
   it("プレースホルダが無くても JS が末尾に注入される", () => {
     const out = buildHtml(files(`<html><head></head><body></body></html>`));
     expect(out).toContain("console.log('hi')");
